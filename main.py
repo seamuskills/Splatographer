@@ -10,7 +10,7 @@ from shapely.geometry import Polygon, Point
 
 VERSION = 0.1
 
-print("Splatographer version: " + VERSION)
+print("Splatographer version: " + str(VERSION))
 
 autosave_time = time.time()
 
