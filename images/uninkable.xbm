@@ -1,0 +1,4 @@
+#define uninkable_width  6
+#define uninkable_height 6
+static unsigned char uninkable_bits[] = {
+ 0xf8,0xf8,0xf8,0xff,0xff,0xff};
