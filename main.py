@@ -155,6 +155,31 @@ def changeLayer(event):
     global currentLayer
     currentLayer = int(event.keysym)
 
+#these have to be here to put them in the menu... I hate it
+def layer0():
+    global currentLayer
+    currentLayer = 0
+
+def layer1():
+    global currentLayer
+    currentLayer = 1
+
+def layer2():
+    global currentLayer
+    currentLayer = 2
+
+def layer3():
+    global currentLayer
+    currentLayer = 3
+
+def layer4():
+    global currentLayer
+    currentLayer = 4
+
+def layer5():
+    global currentLayer
+    currentLayer = 5
+
 root = tk.Tk()  ##create window
 root.iconbitmap("images/mappericon.ico")
 root.geometry("1600x900")
@@ -177,8 +202,18 @@ floorMenu.add_command(label="make grate (g)", command=makeGrate)
 floorMenu.add_separator()
 floorMenu.add_command(label="delete floor (delete or backspace)", command=deleteFloor)
 
+layerMenu = tk.Menu(topBar, tearoff=0)
+layerMenu.add_command(label="all (0)", command=layer0)
+layerMenu.add_separator()
+layerMenu.add_command(label="turf (1)", command=layer1)
+layerMenu.add_command(label="zones (2)", command=layer2)
+layerMenu.add_command(label="tower (3)", command=layer3)
+layerMenu.add_command(label="rain (4)", command=layer4)
+layerMenu.add_command(label="clams (5)", command=layer5)
+
 topBar.add_cascade(label="File", menu=fileMenu)
 topBar.add_cascade(label="Floor", menu=floorMenu)
+topBar.add_cascade(label="Layer", menu=layerMenu)
 topBar.add_command(label="ToggleGrid", command=toggleGrid)
 topBar.add_command(label="Snap to grid", command=toggleSnap)
 topBar.add_command(label="reset camera", command=resetCamera)
