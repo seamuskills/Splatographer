@@ -22,16 +22,6 @@ level = {
 
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave the credit to me alone :)
 
-"""
-temp points will hold points to be closed into a shape on the release of the shift key
-then the shape will be added to level["floors"] in this format:
-{"points": [points array], "type": 0-2, "height": 0-100, layer = int}
-points is the array of points
-type is the following: 0 inkable, 1 uninkable, 3 grates
-height is the percentile height of the floor that decides its color
-layer will decide the draw order in theory...
-"""
-
 tempPoints = []
 
 grid = 32
@@ -39,6 +29,8 @@ camera = [0, 0]
 drawGrid = True
 snapping = True
 heightIncrement = 10
+currentLayer = 0
+layerKey = ["all", "turf", "zones", "tower", "rain", "clams"] #which layer is what
 
 askSave = False
 previousHash = hash(str(level))
@@ -159,6 +151,10 @@ def deleteFloor(*args):
         level["floors"].remove(level["floors"][selectedIndex])
         selectedIndex = -1
 
+def changeLayer(event):
+    global currentLayer
+    currentLayer = int(event.keysym)
+
 root = tk.Tk()  ##create window
 root.iconbitmap("images/mappericon.ico")
 root.geometry("1600x900")
@@ -202,6 +198,9 @@ root.bind(sequence="<i>", func=makeInkable)
 root.bind(sequence="<u>", func=makeUninkable)
 root.bind(sequence="<g>", func=makeGrate)
 
+for i in range(5):
+    root.bind(sequence=str(i), func=changeLayer)
+
 root.config(menu=topBar)
 
 keys = []
@@ -225,7 +224,7 @@ def keyrelease(event):
         if len(tempPoints) <= 2:
             tempPoints = []
             return
-        level["floors"].append({"points": tempPoints, "type": 0, "height": 50, "layer": 0})
+        level["floors"].append({"points": tempPoints, "type": 0, "height": 50, "layer": currentLayer})
         tempPoints = []
 
 
@@ -341,6 +340,9 @@ while not dead:
     canvas.create_rectangle(camera[0] - 5, camera[1] - 5, camera[0] + 5, camera[1] + 5, fill=YELLOW)
 
     for floor in level["floors"]:
+        if not (floor["layer"] == 0 or floor["layer"] == currentLayer):
+            continue
+
         drawPoly = []
         for i in floor["points"]:
             drawPoly.append([i[0] + camera[0], i[1] + camera[1]])
@@ -385,7 +387,7 @@ while not dead:
             mpoint = [mpoint[0] + camera[0], mpoint[1] + camera[1]]
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
-    canvas.create_text(5, 5, text="Grid: {} Snap: {}".format(grid, snapping), fill=YELLOW, anchor="nw",
+    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {}".format(grid, snapping, layerKey[currentLayer]), fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
     root.update()
 
