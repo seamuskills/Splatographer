@@ -35,6 +35,19 @@ layerKey = ["all", "turf", "zones", "tower", "rain", "clams"] #which layer is wh
 askSave = False
 previousHash = hash(str(level))
 
+"""
+compile with pyInstaller:
+pyinstaller --noconfirm --onefile --windowed --add-data "./images;images/" --icon "images/mappericon.ico"  "./main.py"
+"""
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 def toggleGrid():
     global drawGrid
     drawGrid = not drawGrid
@@ -181,7 +194,7 @@ def layer5():
     currentLayer = 5
 
 root = tk.Tk()  ##create window
-root.iconbitmap("images/mappericon.ico")
+root.iconbitmap(resource_path("images\\mappericon.ico"))
 root.geometry("1600x900")
 
 root.config(background="#222222")
@@ -403,10 +416,10 @@ while not dead:
         if floor["type"] < 2:
             canvas.create_polygon(*drawPoly, fill=fill)
             if floor["type"] == 1:
-                canvas.create_polygon(*drawPoly, fill="white" if level["floors"].index(floor) != selectedIndex else YELLOW, stipple="@images/uninkable.xbm")
+                canvas.create_polygon(*drawPoly, fill="white" if level["floors"].index(floor) != selectedIndex else YELLOW, stipple="@"+resource_path("images\\uninkable.xbm"))
         else:
             canvas.create_polygon(*drawPoly, fill=fill,
-                                  stipple="@images/grate.xbm")
+                                  stipple="@"+resource_path("images\\grate.xbm"))
         for point in drawPoly:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
 
