@@ -141,15 +141,15 @@ def floorDown():
 def askHeightIncrement():
     newIncrement = simpledialog.askinteger("New height increment", "How many units should the raise and lower command modify a floors height by?")
 
-def makeInkable():
+def makeInkable(*args):
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["type"] = 0
 
-def makeUninkable():
+def makeUninkable(*args):
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["type"] = 1
 
-def makeGrate():
+def makeGrate(*args):
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["type"] = 2
 
@@ -175,9 +175,9 @@ floorMenu = tk.Menu(topBar, tearoff=0)
 floorMenu.add_command(label="raise (↑)", command=floorUp)
 floorMenu.add_command(label="lower (↓)", command=floorDown)
 floorMenu.add_command(label="change height increment", command=askHeightIncrement)
-floorMenu.add_command(label="make inkable", command=makeInkable)
-floorMenu.add_command(label="make uninkable", command=makeUninkable)
-floorMenu.add_command(label="make grate", command=makeGrate)
+floorMenu.add_command(label="make inkable (i)", command=makeInkable)
+floorMenu.add_command(label="make uninkable (u)", command=makeUninkable)
+floorMenu.add_command(label="make grate (g)", command=makeGrate)
 floorMenu.add_separator()
 floorMenu.add_command(label="delete floor (delete or backspace)", command=deleteFloor)
 
@@ -198,6 +198,9 @@ root.bind(sequence="<Delete>", func=deleteFloor)
 root.bind(sequence="<BackSpace>", func=deleteFloor)
 root.bind(sequence="<]>", func=gridinc)
 root.bind(sequence="<[>", func=griddec)
+root.bind(sequence="<i>", func=makeInkable)
+root.bind(sequence="<u>", func=makeUninkable)
+root.bind(sequence="<g>", func=makeGrate)
 
 root.config(menu=topBar)
 
