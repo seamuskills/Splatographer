@@ -8,7 +8,7 @@ from tkinter import simpledialog
 from tkinter import filedialog, messagebox
 from shapely.geometry import Polygon, Point
 
-VERSION = 0.1
+VERSION = 0.2
 
 print("Splatographer version: " + str(VERSION))
 
