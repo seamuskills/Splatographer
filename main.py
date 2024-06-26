@@ -423,9 +423,12 @@ def rclickPress(event):
 
         tempPoints.append(point)
 
+def configEvent(event):
+    canvas.config(width=event.width, height=event.height)
 
 root.bind("<KeyPress>", keypress)
 root.bind("<KeyRelease>", keyrelease)
+root.bind("<Configure>", configEvent)
 
 canvas.bind("<B1-Motion>", mouseDrag)
 canvas.bind("<Motion>", updateMousePos)
