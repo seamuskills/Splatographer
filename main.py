@@ -6,7 +6,8 @@ import time
 import tkinter as tk
 from tkinter import simpledialog
 from tkinter import filedialog, messagebox
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon, Point, mapping
+from shapely.affinity import translate
 
 VERSION = 0.2
 
@@ -23,6 +24,7 @@ level = {
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave the credit to me alone :)
 
 tempPoints = []
+copiedFloor = {}
 
 grid = 32
 camera = [0, 0]
@@ -218,6 +220,28 @@ def applySettings():
 def settingsWindow():
     Settings()
 
+def toPoints(shape):
+    points = mapping(shape)["coordinates"][0]
+    return [[point[0], point[1]] for point in points]
+
+def copy(*args):
+    global copiedFloor
+    if selectedIndex != -1:
+        copiedFloor = level["floors"][selectedIndex].copy()
+        initPoly = Polygon(level["floors"][selectedIndex]["points"])
+        initPoly = translate(initPoly, xoff=initPoly.bounds[0] * -1, yoff=initPoly.bounds[1] * -1)
+        copiedFloor["points"] = toPoints(initPoly)
+
+def paste(*args):
+    global tempPoints
+    if copiedFloor == {}: return
+    pasted = copiedFloor.copy()
+    pastedPoly = Polygon(pasted["points"])
+    pastedPoly = translate(pastedPoly, snappedMouse()[0], snappedMouse()[1])
+    pasted["points"] = toPoints(pastedPoly)
+
+    level["floors"].append(pasted)
+
 #this is very complex because it auto-generates the window based on how the preferences object is structured lol
 class Settings:
     def __init__(self):
@@ -345,6 +369,8 @@ root.bind(sequence="<[>", func=griddec)
 root.bind(sequence="<i>", func=makeInkable)
 root.bind(sequence="<u>", func=makeUninkable)
 root.bind(sequence="<g>", func=makeGrate)
+root.bind(sequence="<Control-c>", func=copy)
+root.bind(sequence="<Control-v>", func=paste)
 
 for i in range(5):
     root.bind(sequence=str(i), func=changeLayer)
@@ -372,7 +398,7 @@ def keyrelease(event):
         if len(tempPoints) <= 2:
             tempPoints = []
             return
-        level["floors"].append({"points": tempPoints, "type": 0, "height": 50, "layer": currentLayer})
+        level["floors"].append({"points": tempPoints, "type": 0, "height": 100, "layer": currentLayer})
         tempPoints = []
 
 
@@ -410,10 +436,7 @@ def mousePress(event):
 
 def rclickPress(event):
     if "Shift_L" in keys:
-        point = [event.x - camera[0], event.y - camera[1]]
-        if snapping:
-            point[0] -= point[0] % grid
-            point[1] -= point[1] % grid
+        point = snappedMouse()
 
         for tempPoint in tempPoints:
             distance = ((point[0] - tempPoint[0]) ** 2 + (point[1] - tempPoint[1])**2) ** 0.5
@@ -425,6 +448,14 @@ def rclickPress(event):
 
 def configEvent(event):
     canvas.config(width=event.width, height=event.height)
+
+def snappedMouse():
+    mpoint = [mousePos[0], mousePos[1]]
+    if snapping:
+        mpoint = [mpoint[0] - camera[0], mpoint[1] - camera[1]]
+        mpoint[0] -= mpoint[0] % grid
+        mpoint[1] -= mpoint[1] % grid
+    return mpoint
 
 root.bind("<KeyPress>", keypress)
 root.bind("<KeyRelease>", keyrelease)
@@ -532,11 +563,8 @@ while not dead:
         canvas.create_rectangle(camera[0] + point[0] - 4, camera[1] + point[1] - 4, camera[0] + point[0] + 4, camera[1] + point[1] + 4, fill=RED)
 
     if "Shift_L" in keys:
-        mpoint = [mousePos[0], mousePos[1]]
+        mpoint = snappedMouse()
         if snapping:
-            mpoint = [mpoint[0] - camera[0], mpoint[1] - camera[1]]
-            mpoint[0] -= mpoint[0] % grid
-            mpoint[1] -= mpoint[1] % grid
             mpoint = [mpoint[0] + camera[0], mpoint[1] + camera[1]]
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
