@@ -1,13 +1,15 @@
 import json
+import math
 import os.path
 import re
 import sys
 import time
 import tkinter as tk
-from tkinter import simpledialog
 from tkinter import filedialog, messagebox
-from shapely.geometry import Polygon, Point, mapping
+from tkinter import simpledialog
+
 from shapely.affinity import translate
+from shapely.geometry import Polygon, Point, mapping
 
 VERSION = 0.2
 
@@ -18,7 +20,9 @@ autosave_time = time.time()
 path = ""
 
 level = {
-    "floors": []
+    "floors": [],
+    "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
+    "rotated": "rotated",  # is this level rotated or flipped? valid values: rotated, x, y
 }
 
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave the credit to me alone :)
@@ -32,7 +36,7 @@ drawGrid = True
 snapping = True
 heightIncrement = 10
 currentLayer = 0
-layerKey = ["all", "turf", "zones", "tower", "rain", "clams"] #which layer is what
+layerKey = ["all", "turf", "zones", "tower", "rain", "clams"]  # which layer is what
 
 askSave = False
 previousHash = hash(str(level))
@@ -41,6 +45,7 @@ preferences = {
     "height_increment": 10,
     "snap": True
 }
+showSymmetry = True
 
 settingsPath = os.getcwd() + "\\settings.json"
 
@@ -48,6 +53,29 @@ settingsPath = os.getcwd() + "\\settings.json"
 compile with pyInstaller:
 pyinstaller --noconfirm --onefile --windowed --add-data "./images;images/" --icon "images/mappericon.ico"  "./main.py"
 """
+
+
+def validateLevel():  # this will make sure that the level file is fully valid
+    if not "floors" in level:
+        level["floors"] = []
+    else:
+        for floor in level["floors"]:
+            if not "points" in floor:
+                level["floors"].remove(floor)
+            if not "type" in floor:
+                floor["type"] = 0
+            if not "height" in floor:
+                floor["height"] = 100
+            if not "layer" in floor:
+                floor["layer"] = 0
+
+    if not "symmetryPoint" in level:
+        level["symmetryPoint"] = []
+    if not "rotated" in level:
+        level["rotated"] = "rotated"
+
+    save()
+
 
 def resource_path(relative_path):
     try:
@@ -57,6 +85,7 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+
 def toggleGrid():
     global drawGrid
     drawGrid = not drawGrid
@@ -65,6 +94,11 @@ def toggleGrid():
 def toggleSnap():
     global snapping
     snapping = not snapping
+
+
+def toggleShowSymmetry(*args):
+    global showSymmetry
+    showSymmetry = not showSymmetry
 
 
 def resetCamera():
@@ -78,6 +112,7 @@ LIGHT_BLUE = "#1E8798"
 PURPLE = "#6342f5"
 RED = "#ff3f14"
 TOMATO = "#E46F3B"
+
 
 def gridinc(*args):
     global grid
@@ -129,6 +164,7 @@ def openFile(*args):  # *args so the hotkey can be used lol
             path = newPath
             with open(path, "r") as f:
                 level = json.loads(f.read())
+                validateLevel()
             camera = [-grid, -grid]
             askSave = False
             previousHash = hash(str(level))
@@ -145,27 +181,36 @@ def about():
     This program was created by Seamus Donahue, you can find more info at https://error418.carrd.co/ or email me at seamus-donahue@proton.me
     """)
 
+
 def floorUp():
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["height"] = min(level["floors"][selectedIndex]["height"] + heightIncrement, 100)
+
+
 def floorDown():
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["height"] = max(level["floors"][selectedIndex]["height"] - heightIncrement, 0)
 
+
 def askHeightIncrement():
-    newIncrement = simpledialog.askinteger("New height increment", "How many units should the raise and lower command modify a floors height by?")
+    newIncrement = simpledialog.askinteger("New height increment",
+                                           "How many units should the raise and lower command modify a floors height by?")
+
 
 def makeInkable(*args):
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["type"] = 0
 
+
 def makeUninkable(*args):
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["type"] = 1
 
+
 def makeGrate(*args):
     if selectedIndex in range(len(level["floors"])):
         level["floors"][selectedIndex]["type"] = 2
+
 
 def deleteFloor(*args):
     global selectedIndex
@@ -173,34 +218,50 @@ def deleteFloor(*args):
         level["floors"].remove(level["floors"][selectedIndex])
         selectedIndex = -1
 
+
 def changeLayer(event):
     global currentLayer
     currentLayer = int(event.keysym)
 
-#these have to be here to put them in the menu... I hate it
+def xflip():
+    level["rotated"] = "x"
+
+def yflip():
+    level["rotated"] = "y"
+
+def rotatenotflip():
+    level["rotated"] = "rotated"
+
+# these have to be here to put them in the menu... I hate it
 def layer0():
     global currentLayer
     currentLayer = 0
+
 
 def layer1():
     global currentLayer
     currentLayer = 1
 
+
 def layer2():
     global currentLayer
     currentLayer = 2
+
 
 def layer3():
     global currentLayer
     currentLayer = 3
 
+
 def layer4():
     global currentLayer
     currentLayer = 4
 
+
 def layer5():
     global currentLayer
     currentLayer = 5
+
 
 def applySettings():
     global grid
@@ -217,12 +278,23 @@ def applySettings():
     heightIncrement = preferences["height_increment"]
     snapping = preferences["snap"]
 
+
 def settingsWindow():
     Settings()
+
 
 def toPoints(shape):
     points = mapping(shape)["coordinates"][0]
     return [[point[0], point[1]] for point in points]
+
+
+def setSymmetry(*args):
+    level["symmetryPoint"] = snappedMouse()
+
+def resetSymmetry():
+    if (messagebox.askyesno(title="Reset symmetry settings", message="Do you want to reset symmetry settings for this map?")):
+        level["symmetryPoint"] = []
+        level["rotated"] = "rotated"
 
 def copy(*args):
     global copiedFloor
@@ -231,6 +303,7 @@ def copy(*args):
         initPoly = Polygon(level["floors"][selectedIndex]["points"])
         initPoly = translate(initPoly, xoff=initPoly.bounds[0] * -1, yoff=initPoly.bounds[1] * -1)
         copiedFloor["points"] = toPoints(initPoly)
+
 
 def paste(*args):
     global tempPoints
@@ -242,7 +315,8 @@ def paste(*args):
 
     level["floors"].append(pasted)
 
-#this is very complex because it auto-generates the window based on how the preferences object is structured lol
+
+# this is very complex because it auto-generates the window based on how the preferences object is structured lol
 class Settings:
     def __init__(self):
         self.font = "Sans-Serif 10 bold"
@@ -254,7 +328,7 @@ class Settings:
         row = 0
 
         topLabel = tk.Label(self.window, text="Change persistent settings: ", bg=DARK_BLUE, fg=YELLOW, font=self.font)
-        topLabel.grid(column = 0, row=row)
+        topLabel.grid(column=0, row=row)
 
         self.settings = {}
         for k, v in preferences.items():
@@ -274,9 +348,10 @@ class Settings:
                 inp.config(textvariable=self.settings[k])
             elif type(v) is bool:
                 self.settings[k] = tk.BooleanVar(self.window, v)
-                inp = tk.Checkbutton(self.window, bg=DARK_BLUE, variable=self.settings[k], fg=YELLOW, selectcolor=LIGHT_BLUE, activebackground=DARK_BLUE)
+                inp = tk.Checkbutton(self.window, bg=DARK_BLUE, variable=self.settings[k], fg=YELLOW,
+                                     selectcolor=LIGHT_BLUE, activebackground=DARK_BLUE)
             else:
-                print("UNACCOUNTED FOR TYPE "+k+" WITH VALUE OF "+str(v))
+                print("UNACCOUNTED FOR TYPE " + k + " WITH VALUE OF " + str(v))
 
             inp.grid(column=1, row=row)
 
@@ -286,7 +361,9 @@ class Settings:
         done = tk.Button(self.window, text="save", bg=LIGHT_BLUE, fg=YELLOW, font=self.font, command=self.save)
         done.grid(column=1, row=row + 1)
 
-        bottomLabel = tk.Label(self.window, text="These settings will be saved to a file and used on save and when starting splatographer again.", bg=DARK_BLUE, fg=TOMATO, font="Sans-sarif 8 bold")
+        bottomLabel = tk.Label(self.window,
+                               text="These settings will be saved to a file and used on save and when starting splatographer again.",
+                               bg=DARK_BLUE, fg=TOMATO, font="Sans-sarif 8 bold")
         bottomLabel.grid(column=0, row=row + 2, columnspan=2)
 
     def quit(self):
@@ -315,6 +392,7 @@ class Settings:
         if valid:
             self.settings[set].set(inp)
         return valid
+
 
 root = tk.Tk()  ##create window
 root.iconbitmap(resource_path("images\\mappericon.ico"))
@@ -348,9 +426,19 @@ layerMenu.add_command(label="tower (3)", command=layer3)
 layerMenu.add_command(label="rain (4)", command=layer4)
 layerMenu.add_command(label="clams (5)", command=layer5)
 
+symmetryMenu = tk.Menu(topBar, tearoff=0)
+symmetryMenu.add_command(label="show symmetry", command=toggleShowSymmetry)
+symmetryMenu.add_separator()
+symmetryMenu.add_command(label="rotated symmetry", command=rotatenotflip)
+symmetryMenu.add_command(label="flip on x", command=xflip)
+symmetryMenu.add_command(label="flip on y", command=yflip)
+symmetryMenu.add_separator()
+symmetryMenu.add_command(label="reset", command=resetSymmetry)
+
 topBar.add_cascade(label="File", menu=fileMenu)
 topBar.add_cascade(label="Floor", menu=floorMenu)
 topBar.add_cascade(label="Layer", menu=layerMenu)
+topBar.add_cascade(label="Symmetry", menu=symmetryMenu)
 topBar.add_command(label="ToggleGrid", command=toggleGrid)
 topBar.add_command(label="Snap to grid", command=toggleSnap)
 topBar.add_command(label="reset camera", command=resetCamera)
@@ -371,6 +459,7 @@ root.bind(sequence="<u>", func=makeUninkable)
 root.bind(sequence="<g>", func=makeGrate)
 root.bind(sequence="<Control-c>", func=copy)
 root.bind(sequence="<Control-v>", func=paste)
+root.bind(sequence="<Control-r>", func=setSymmetry)
 
 for i in range(5):
     root.bind(sequence=str(i), func=changeLayer)
@@ -378,6 +467,7 @@ for i in range(5):
 root.config(menu=topBar)
 
 keys = []
+
 
 def keypress(event):
     if not event.keysym in keys:
@@ -388,6 +478,7 @@ def keypress(event):
         floorUp()
     if "Down" in keys and selectedIndex != -1:
         floorDown()
+
 
 def keyrelease(event):
     if event.keysym in keys:
@@ -404,14 +495,15 @@ def keyrelease(event):
 
 dragPrevious = [0, 0]
 
-
 mousePos = [0, 0]
 selectedIndex = -1
 deleteDistance = 5
 
+
 def updateMousePos(event):
     global mousePos
     mousePos = [event.x, event.y]
+
 
 def mouseDrag(event):
     global dragPrevious
@@ -439,15 +531,17 @@ def rclickPress(event):
         point = snappedMouse()
 
         for tempPoint in tempPoints:
-            distance = ((point[0] - tempPoint[0]) ** 2 + (point[1] - tempPoint[1])**2) ** 0.5
+            distance = ((point[0] - tempPoint[0]) ** 2 + (point[1] - tempPoint[1]) ** 2) ** 0.5
             if distance < deleteDistance:
                 tempPoints.remove(tempPoint)
                 return
 
         tempPoints.append(point)
 
+
 def configEvent(event):
     canvas.config(width=event.width, height=event.height)
+
 
 def snappedMouse():
     mpoint = [mousePos[0], mousePos[1]]
@@ -457,6 +551,7 @@ def snappedMouse():
         mpoint[1] -= mpoint[1] % grid
     return mpoint
 
+
 root.bind("<KeyPress>", keypress)
 root.bind("<KeyRelease>", keyrelease)
 root.bind("<Configure>", configEvent)
@@ -464,6 +559,7 @@ root.bind("<Configure>", configEvent)
 canvas.bind("<B1-Motion>", mouseDrag)
 canvas.bind("<Motion>", updateMousePos)
 canvas.bind("<Button-1>", mousePress)
+canvas.bind("<Button-2>", setSymmetry)
 canvas.bind("<Button-3>", rclickPress)
 
 
@@ -531,6 +627,27 @@ while not dead:
         for i in floor["points"]:
             drawPoly.append([i[0] + camera[0], i[1] + camera[1]])
 
+        drawSymmetry = []
+        if showSymmetry and level["symmetryPoint"]:
+            if level["rotated"] == "rotated":
+                for i in floor["points"]:
+                    point = [
+                        level["symmetryPoint"][0] + math.cos(math.pi) * (i[0] - level["symmetryPoint"][0]) - math.sin(
+                            math.pi) * (i[1] - level["symmetryPoint"][1]),
+                        level["symmetryPoint"][1] + math.sin(math.pi) * (i[0] - level["symmetryPoint"][0]) + math.cos(
+                            math.pi) * (i[1] - level["symmetryPoint"][1])
+                    ]
+
+                    drawSymmetry.append([point[0] + camera[0], point[1] + camera[1]])
+            if level["rotated"] == "x":
+                for i in floor["points"]:
+                    xdiff = i[0] - level["symmetryPoint"][0]
+                    drawSymmetry.append([i[0] - (xdiff * 2) + camera[0], i[1] + camera[1]])
+            if level["rotated"] == "y":
+                for i in floor["points"]:
+                    ydiff = i[1] - level["symmetryPoint"][1]
+                    drawSymmetry.append([i[0] + camera[0], i[1] - (ydiff * 2) + camera[1]])
+
         # this whole equation converts the height to a hex value between 0x0 and 0xff then formats it like a hex string
         fill = "#" + (
             hex(int(
@@ -551,16 +668,36 @@ while not dead:
 
         if floor["type"] < 2:
             canvas.create_polygon(*drawPoly, fill=fill)
+            if drawSymmetry:
+                canvas.create_polygon(*drawSymmetry, fill=fill)
             if floor["type"] == 1:
-                canvas.create_polygon(*drawPoly, fill="white" if level["floors"].index(floor) != selectedIndex else YELLOW, stipple="@"+resource_path("images\\uninkable.xbm"))
+                canvas.create_polygon(*drawPoly,
+                                      fill="white" if level["floors"].index(floor) != selectedIndex else YELLOW,
+                                      stipple="@" + resource_path("images\\uninkable.xbm"))
+                if drawSymmetry:
+                    canvas.create_polygon(*drawSymmetry,
+                                          fill="white" if level["floors"].index(floor) != selectedIndex else YELLOW,
+                                          stipple="@" + resource_path("images\\uninkable.xbm"))
         else:
             canvas.create_polygon(*drawPoly, fill=fill,
-                                  stipple="@"+resource_path("images\\grate.xbm"))
+                                  stipple="@" + resource_path("images\\grate.xbm"))
+            if drawSymmetry:
+                canvas.create_polygon(*drawSymmetry, fill=fill,
+                                      stipple="@" + resource_path("images\\grate.xbm"))
         for point in drawPoly:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
 
+        for point in drawSymmetry:
+            canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
+
+    if level["symmetryPoint"]:
+        canvas.create_rectangle(camera[0] + level["symmetryPoint"][0] - 2, camera[1] + level["symmetryPoint"][1] - 2,
+                                camera[0] + level["symmetryPoint"][0] + 2, camera[1] + level["symmetryPoint"][1] + 2,
+                                fill=TOMATO)
+
     for point in tempPoints:
-        canvas.create_rectangle(camera[0] + point[0] - 4, camera[1] + point[1] - 4, camera[0] + point[0] + 4, camera[1] + point[1] + 4, fill=RED)
+        canvas.create_rectangle(camera[0] + point[0] - 4, camera[1] + point[1] - 4, camera[0] + point[0] + 4,
+                                camera[1] + point[1] + 4, fill=RED)
 
     if "Shift_L" in keys:
         mpoint = snappedMouse()
@@ -568,7 +705,8 @@ while not dead:
             mpoint = [mpoint[0] + camera[0], mpoint[1] + camera[1]]
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
-    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {}".format(grid, snapping, layerKey[currentLayer]), fill=YELLOW, anchor="nw",
+    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {}".format(grid, snapping, layerKey[currentLayer]),
+                       fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
     root.update()
 
