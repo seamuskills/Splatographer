@@ -34,6 +34,13 @@ layerKey = ["all", "turf", "zones", "tower", "rain", "clams"] #which layer is wh
 
 askSave = False
 previousHash = hash(str(level))
+preferences = {
+    "grid": 32,
+    "height_increment": 10,
+    "snap": True
+}
+
+settingsPath = os.getcwd() + "\\settings.json"
 
 """
 compile with pyInstaller:
@@ -68,7 +75,7 @@ DARK_BLUE = "#0F2129"
 LIGHT_BLUE = "#1E8798"
 PURPLE = "#6342f5"
 RED = "#ff3f14"
-
+TOMATO = "#E46F3B"
 
 def gridinc(*args):
     global grid
@@ -193,6 +200,98 @@ def layer5():
     global currentLayer
     currentLayer = 5
 
+def applySettings():
+    global grid
+    global heightIncrement
+    global snapping
+    global preferences
+    if not os.path.exists(settingsPath):
+        with open(settingsPath, "w") as f:
+            f.write(json.dumps(preferences))
+    with open(settingsPath, "r") as f:
+        preferences = preferences | json.loads(f.read())
+
+    grid = int(preferences["grid"])
+    heightIncrement = preferences["height_increment"]
+    snapping = preferences["snap"]
+
+def settingsWindow():
+    Settings()
+
+#this is very complex because it auto-generates the window based on how the preferences object is structured lol
+class Settings:
+    def __init__(self):
+        self.font = "Sans-Serif 10 bold"
+
+        self.window = tk.Toplevel(padx=10, pady=10, bg=DARK_BLUE)
+        self.window.wm_title("Preferences")
+        self.window.resizable(False, False)
+
+        row = 0
+
+        topLabel = tk.Label(self.window, text="Change persistent settings: ", bg=DARK_BLUE, fg=YELLOW, font=self.font)
+        topLabel.grid(column = 0, row=row)
+
+        self.settings = {}
+        for k, v in preferences.items():
+            row += 1
+
+            key = tk.Label(self.window, text=k, bg=DARK_BLUE, fg=YELLOW, font=self.font)
+            key.grid(column=0, row=row)
+
+            inp = tk.Entry(self.window, bg=LIGHT_BLUE, fg=YELLOW, font=self.font)
+            inp.insert(0, v)
+
+            if type(v) is int or type(v) is float:
+                self.settings[k] = tk.DoubleVar(self.window, v)
+                inp.config(validatecommand=(self.window.register(self.validDigit), "%P", k), validate="all")
+            elif type(v) is str:
+                self.settings[k] = tk.StringVar(self.window, v)
+                inp.config(textvariable=self.settings[k])
+            elif type(v) is bool:
+                self.settings[k] = tk.BooleanVar(self.window, v)
+                inp = tk.Checkbutton(self.window, bg=DARK_BLUE, variable=self.settings[k], fg=YELLOW, selectcolor=LIGHT_BLUE, activebackground=DARK_BLUE)
+            else:
+                print("UNACCOUNTED FOR TYPE "+k+" WITH VALUE OF "+str(v))
+
+            inp.grid(column=1, row=row)
+
+        cancel = tk.Button(self.window, text="cancel", bg=LIGHT_BLUE, fg=YELLOW, font=self.font, command=self.quit)
+        cancel.grid(column=0, row=row + 1)
+
+        done = tk.Button(self.window, text="save", bg=LIGHT_BLUE, fg=YELLOW, font=self.font, command=self.save)
+        done.grid(column=1, row=row + 1)
+
+        bottomLabel = tk.Label(self.window, text="These settings will be saved to a file and used on save and when starting splatographer again.", bg=DARK_BLUE, fg=TOMATO, font="Sans-sarif 8 bold")
+        bottomLabel.grid(column=0, row=row + 2, columnspan=2)
+
+    def quit(self):
+        self.window.destroy()
+
+    def save(self):
+        for k, v in self.settings.items():
+            preferences[k] = v.get()
+
+        with open(settingsPath, "w") as f:
+            f.write(json.dumps(preferences))
+
+        applySettings()
+
+        self.window.destroy()
+
+    def validDigit(self, inp, set):
+        valid = inp == ""
+        if not valid:
+            try:
+                float(inp)
+                valid = True
+            except:
+                valid = False
+
+        if valid:
+            self.settings[set].set(inp)
+        return valid
+
 root = tk.Tk()  ##create window
 root.iconbitmap(resource_path("images\\mappericon.ico"))
 root.geometry("1600x900")
@@ -204,6 +303,7 @@ fileMenu = tk.Menu(topBar, tearoff=0)
 fileMenu.add_command(label="New Map", command=newFile)
 fileMenu.add_command(label="Open Map", command=openFile)
 fileMenu.add_command(label="Save Map", command=save)
+fileMenu.add_command(label="preferences", command=settingsWindow)
 
 floorMenu = tk.Menu(topBar, tearoff=0)
 floorMenu.add_command(label="raise (↑)", command=floorUp)
@@ -360,6 +460,8 @@ if len(sys.argv) >= 3:
                 level = json.loads(f.read())
         else:
             messagebox.showerror(title="Invalid file", message="The file being opened does not exist!")
+
+applySettings()
 
 dead = False
 
