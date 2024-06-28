@@ -11,7 +11,7 @@ from tkinter import simpledialog
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 0.2
+VERSION = 0.3
 
 print("Splatographer version: " + str(VERSION))
 
