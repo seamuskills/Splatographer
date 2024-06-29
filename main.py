@@ -32,6 +32,7 @@ copiedFloor = {}
 
 grid = 32
 camera = [0, 0]
+zoom = 1
 drawGrid = True
 snapping = True
 heightIncrement = 10
@@ -223,14 +224,18 @@ def changeLayer(event):
     global currentLayer
     currentLayer = int(event.keysym)
 
+
 def xflip():
     level["rotated"] = "x"
+
 
 def yflip():
     level["rotated"] = "y"
 
+
 def rotatenotflip():
     level["rotated"] = "rotated"
+
 
 # these have to be here to put them in the menu... I hate it
 def layer0():
@@ -291,10 +296,13 @@ def toPoints(shape):
 def setSymmetry(*args):
     level["symmetryPoint"] = snappedMouse()
 
+
 def resetSymmetry():
-    if (messagebox.askyesno(title="Reset symmetry settings", message="Do you want to reset symmetry settings for this map?")):
+    if (messagebox.askyesno(title="Reset symmetry settings",
+                            message="Do you want to reset symmetry settings for this map?")):
         level["symmetryPoint"] = []
         level["rotated"] = "rotated"
+
 
 def copy(*args):
     global copiedFloor
@@ -519,7 +527,7 @@ def mousePress(event):
 
     selected = False
     for floor in level["floors"]:
-        if Point(mousePos[0] - camera[0], mousePos[1] - camera[1]).within(Polygon(floor["points"])):
+        if Point(fromScreen(mousePos)).within(Polygon(floor["points"])):
             selectedIndex = level["floors"].index(floor)
             selected = True
 
@@ -544,12 +552,24 @@ def configEvent(event):
 
 
 def snappedMouse():
-    mpoint = [mousePos[0], mousePos[1]]
+    mpoint = fromScreen(mousePos)
     if snapping:
-        mpoint = [mpoint[0] - camera[0], mpoint[1] - camera[1]]
         mpoint[0] -= mpoint[0] % grid
         mpoint[1] -= mpoint[1] % grid
     return mpoint
+
+
+def toScreen(coords):
+    return [(coords[0] + camera[0]) * zoom, (coords[1] + camera[1]) * zoom]
+
+def fromScreen(coords):
+    return [round(coords[0] / zoom, 3) - camera[0], round(coords[1] / zoom, 3) - camera[1]]
+
+
+def scroll(event):
+    global zoom
+    zoom += 0.1 if event.delta > 0 else -0.1
+    zoom = min(2, max(0.5, zoom))
 
 
 root.bind("<KeyPress>", keypress)
@@ -561,6 +581,7 @@ canvas.bind("<Motion>", updateMousePos)
 canvas.bind("<Button-1>", mousePress)
 canvas.bind("<Button-2>", setSymmetry)
 canvas.bind("<Button-3>", rclickPress)
+canvas.bind("<MouseWheel>", scroll)
 
 
 def die():
@@ -608,16 +629,23 @@ while not dead:
         else:
             root.title("Splatographer | " + path + (" Not saved*" if askSave else " Saved!"))
 
+    zero = toScreen([0, 0])
+
     if selectedIndex < 0:
         level["floors"] = sorted(level["floors"], key=lambda x: x["height"])
     canvas.delete("all")
     if drawGrid:
-        for y in range(camera[1] % grid, camera[1] % grid + 900, grid):
-            canvas.create_line(0, y, 1600, y, fill=LIGHT_BLUE)
-        for x in range(camera[0] % grid, camera[0] % grid + 1600, grid):
-            canvas.create_line(x, 0, x, 900, fill=LIGHT_BLUE)
+        yval = camera[1] % grid * zoom
+        while yval < camera[1] % grid * zoom + canvas.winfo_height():
+            canvas.create_line(0, yval, canvas.winfo_width(), yval, fill=LIGHT_BLUE)
+            yval += grid * zoom
 
-    canvas.create_rectangle(camera[0] - 5, camera[1] - 5, camera[0] + 5, camera[1] + 5, fill=YELLOW)
+        xval = camera[0] % grid * zoom
+        while xval < camera[0] % grid * zoom + canvas.winfo_width():
+            canvas.create_line(xval, 0, xval, canvas.winfo_height(), fill=LIGHT_BLUE)
+            xval += grid * zoom
+
+    canvas.create_rectangle(zero[0] - 5, zero[1] - 5, zero[0] + 5, zero[1] + 5, fill=YELLOW)
 
     for floor in level["floors"]:
         if not (floor["layer"] == 0 or floor["layer"] == currentLayer):
@@ -625,7 +653,7 @@ while not dead:
 
         drawPoly = []
         for i in floor["points"]:
-            drawPoly.append([i[0] + camera[0], i[1] + camera[1]])
+            drawPoly.append(toScreen(i))
 
         drawSymmetry = []
         if showSymmetry and level["symmetryPoint"]:
@@ -638,15 +666,15 @@ while not dead:
                             math.pi) * (i[1] - level["symmetryPoint"][1])
                     ]
 
-                    drawSymmetry.append([point[0] + camera[0], point[1] + camera[1]])
+                    drawSymmetry.append(toScreen(point))
             if level["rotated"] == "x":
                 for i in floor["points"]:
                     xdiff = i[0] - level["symmetryPoint"][0]
-                    drawSymmetry.append([i[0] - (xdiff * 2) + camera[0], i[1] + camera[1]])
+                    drawSymmetry.append(toScreen([i[0] - (xdiff * 2), i[1]]))
             if level["rotated"] == "y":
                 for i in floor["points"]:
                     ydiff = i[1] - level["symmetryPoint"][1]
-                    drawSymmetry.append([i[0] + camera[0], i[1] - (ydiff * 2) + camera[1]])
+                    drawSymmetry.append(toScreen([i[0], i[1] - (ydiff * 2)]))
 
         # this whole equation converts the height to a hex value between 0x0 and 0xff then formats it like a hex string
         fill = "#" + (
@@ -696,16 +724,17 @@ while not dead:
                                 fill=TOMATO)
 
     for point in tempPoints:
-        canvas.create_rectangle(camera[0] + point[0] - 4, camera[1] + point[1] - 4, camera[0] + point[0] + 4,
-                                camera[1] + point[1] + 4, fill=RED)
+        absolute = toScreen(point)
+        canvas.create_rectangle(absolute[0] - 4, absolute[1] - 4, absolute[0] + 4,
+                                absolute[1] + 4, fill=RED)
 
     if "Shift_L" in keys:
         mpoint = snappedMouse()
         if snapping:
-            mpoint = [mpoint[0] + camera[0], mpoint[1] + camera[1]]
+            mpoint = toScreen(mpoint)
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
-    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {}".format(grid, snapping, layerKey[currentLayer]),
+    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}%".format(grid, snapping, layerKey[currentLayer], round(zoom * 100)),
                        fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
     root.update()
