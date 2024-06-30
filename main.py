@@ -26,7 +26,7 @@ level = {
     "objectives": {
         "zones": [],  # list of splatzones, same format as a floor
         "tower": [],  # list of points which lay out the path, a third entry can make the point a checkpoint.
-        "rm": [],  # list of coordinates for podiums be them checkpoints or goals
+        "rain": [],  # list of coordinates for podiums be them checkpoints or goals
         "clams": []  # basket coordinates
     }
 }
@@ -764,6 +764,10 @@ while not dead:
             if level["objectives"]["tower"].index(point) > 0:
                 previous = toScreen(level["objectives"]["tower"][level["objectives"]["tower"].index(point) - 1])
                 canvas.create_line(previous[0], previous[1], absolute[0], absolute[1], width=3, fill=LIGHT_PURPLE)
+    elif currentLayer == 4:
+        for podium in level["objectives"]["rain"]:
+            absolute = toScreen(podium)
+            canvas.create_oval(absolute[0] - 25, absolute[1] - 25, absolute[0] + 25, absolute[1] + 25, fill=PURPLE, outline=LIGHT_PURPLE, width=5)
 
     if "Shift_L" in keys:
         mpoint = snappedMouse()
