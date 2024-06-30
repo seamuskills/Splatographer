@@ -23,6 +23,12 @@ level = {
     "floors": [],
     "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
     "rotated": "rotated",  # is this level rotated or flipped? valid values: rotated, x, y
+    "objectives": {
+        "zones": [],  # list of splatzones, same format as a floor
+        "tower": [],  # list of points which lay out the path, a third entry can make the point a checkpoint.
+        "rm": [],  # list of coordinates for podiums be them checkpoints or goals
+        "clams": []  # basket coordinates
+    }
 }
 
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave the credit to me alone :)
@@ -111,6 +117,7 @@ YELLOW = "#F9C622"
 DARK_BLUE = "#0F2129"
 LIGHT_BLUE = "#1E8798"
 PURPLE = "#6342f5"
+LIGHT_PURPLE = "#fc05f0"
 RED = "#ff3f14"
 TOMATO = "#E46F3B"
 
@@ -533,6 +540,9 @@ def mousePress(event):
 
     if not selected: selectedIndex = -1
 
+    if "Shift_L" in keys:
+        placeObjective(event)
+
 
 def rclickPress(event):
     if "Shift_L" in keys:
@@ -562,6 +572,7 @@ def snappedMouse():
 def toScreen(coords):
     return [(coords[0] + camera[0]) * zoom, (coords[1] + camera[1]) * zoom]
 
+
 def fromScreen(coords):
     return [round(coords[0] / zoom, 3) - camera[0], round(coords[1] / zoom, 3) - camera[1]]
 
@@ -570,6 +581,21 @@ def scroll(event):
     global zoom
     zoom += 0.1 if event.delta > 0 else -0.1
     zoom = min(2, max(0.5, zoom))
+
+
+def placeObjective(event):
+    if currentLayer < 2:
+        return
+
+    if currentLayer > 2:
+        for objective in level["objectives"][layerKey[currentLayer]]:
+            distance = ((objective[0] - snappedMouse()[0]) ** 2 + (objective[1] - snappedMouse()[1]) ** 2) ** 0.5
+            if distance < grid / 2:
+                level["objectives"][layerKey[currentLayer]].remove(objective)
+                return
+        level["objectives"][layerKey[currentLayer]].append(snappedMouse())
+        if currentLayer == 3 and "Control_L" in keys:
+            level["objectives"][layerKey[currentLayer]][-1].append(True)
 
 
 root.bind("<KeyPress>", keypress)
@@ -728,13 +754,25 @@ while not dead:
         canvas.create_rectangle(absolute[0] - 4, absolute[1] - 4, absolute[0] + 4,
                                 absolute[1] + 4, fill=RED)
 
+    #objective drawing
+    if currentLayer == 3:
+        for point in level["objectives"]["tower"]:
+            width = 2 if len(point) == 2 else 25 * zoom
+            absolute = toScreen(point)
+            canvas.create_rectangle(absolute[0] - width, absolute[1] - width, absolute[0] + width,
+                                    absolute[1] + width, fill=PURPLE)
+            if level["objectives"]["tower"].index(point) > 0:
+                previous = toScreen(level["objectives"]["tower"][level["objectives"]["tower"].index(point) - 1])
+                canvas.create_line(previous[0], previous[1], absolute[0], absolute[1], width=3, fill=LIGHT_PURPLE)
+
     if "Shift_L" in keys:
         mpoint = snappedMouse()
         if snapping:
             mpoint = toScreen(mpoint)
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
-    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}%".format(grid, snapping, layerKey[currentLayer], round(zoom * 100)),
+    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}%".format(grid, snapping, layerKey[currentLayer],
+                                                                                round(zoom * 100)),
                        fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
     root.update()
