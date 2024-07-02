@@ -576,6 +576,22 @@ def toScreen(coords):
 def fromScreen(coords):
     return [round(coords[0] / zoom, 3) - camera[0], round(coords[1] / zoom, 3) - camera[1]]
 
+def symmetrical(point):
+    if level["rotated"] == "rotated":
+        return [
+            level["symmetryPoint"][0] + math.cos(math.pi) * (i[0] - level["symmetryPoint"][0]) - math.sin(
+                math.pi) * (i[1] - level["symmetryPoint"][1]),
+            level["symmetryPoint"][1] + math.sin(math.pi) * (i[0] - level["symmetryPoint"][0]) + math.cos(
+                math.pi) * (i[1] - level["symmetryPoint"][1])
+        ]
+
+    if level["rotated"] == "x":
+        xdiff = i[0] - level["symmetryPoint"][0]
+        return [i[0] - (xdiff * 2), i[1]]
+
+    if level["rotated"] == "y":
+        ydiff = i[1] - level["symmetryPoint"][1]
+        return [i[0], i[1] - (ydiff * 2)]
 
 def scroll(event):
     global zoom
@@ -683,24 +699,8 @@ while not dead:
 
         drawSymmetry = []
         if showSymmetry and level["symmetryPoint"]:
-            if level["rotated"] == "rotated":
-                for i in floor["points"]:
-                    point = [
-                        level["symmetryPoint"][0] + math.cos(math.pi) * (i[0] - level["symmetryPoint"][0]) - math.sin(
-                            math.pi) * (i[1] - level["symmetryPoint"][1]),
-                        level["symmetryPoint"][1] + math.sin(math.pi) * (i[0] - level["symmetryPoint"][0]) + math.cos(
-                            math.pi) * (i[1] - level["symmetryPoint"][1])
-                    ]
-
-                    drawSymmetry.append(toScreen(point))
-            if level["rotated"] == "x":
-                for i in floor["points"]:
-                    xdiff = i[0] - level["symmetryPoint"][0]
-                    drawSymmetry.append(toScreen([i[0] - (xdiff * 2), i[1]]))
-            if level["rotated"] == "y":
-                for i in floor["points"]:
-                    ydiff = i[1] - level["symmetryPoint"][1]
-                    drawSymmetry.append(toScreen([i[0], i[1] - (ydiff * 2)]))
+            for i in floor["points"]:
+                drawSymmetry.append(toScreen(symmetrical(i)))
 
         # this whole equation converts the height to a hex value between 0x0 and 0xff then formats it like a hex string
         fill = "#" + (
