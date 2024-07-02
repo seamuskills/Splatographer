@@ -1,0 +1,4 @@
+#define mesh_width  5
+#define mesh_height 5
+static unsigned char mesh_bits[] = {
+ 0xf1,0xea,0xe4,0xea,0xf1};

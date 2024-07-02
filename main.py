@@ -476,7 +476,7 @@ root.bind(sequence="<Control-c>", func=copy)
 root.bind(sequence="<Control-v>", func=paste)
 root.bind(sequence="<Control-r>", func=setSymmetry)
 
-for i in range(5):
+for i in range(6):
     root.bind(sequence=str(i), func=changeLayer)
 
 root.config(menu=topBar)
@@ -768,6 +768,10 @@ while not dead:
         for podium in level["objectives"]["rain"]:
             absolute = toScreen(podium)
             canvas.create_oval(absolute[0] - 25, absolute[1] - 25, absolute[0] + 25, absolute[1] + 25, fill=PURPLE, outline=LIGHT_PURPLE, width=5)
+    elif currentLayer == 5:
+        for basket in level["objectives"]["clams"]:
+            absolute = toScreen(basket)
+            canvas.create_rectangle(absolute[0] - 25 * zoom, absolute[1] - 25 * zoom, absolute[0] + 25 * zoom, absolute[1] + 25 * zoom, fill=PURPLE, outline=LIGHT_PURPLE, width=5, stipple="@" + resource_path("images\\mesh.xbm"))
 
     if "Shift_L" in keys:
         mpoint = snappedMouse()
