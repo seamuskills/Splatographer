@@ -31,7 +31,7 @@ level = {
     }
 }
 
-## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave the credit to me alone :)
+## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave alone the credit to me :)
 
 tempPoints = []
 copiedFloor = {}
