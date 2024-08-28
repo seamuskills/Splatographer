@@ -532,16 +532,16 @@ def mousePress(event):
     global selectedIndex
     dragPrevious = [event.x, event.y]
 
-    selected = False
-    for floor in level["floors"]:
-        if Point(fromScreen(mousePos)).within(Polygon(floor["points"])):
-            selectedIndex = level["floors"].index(floor)
-            selected = True
-
-    if not selected: selectedIndex = -1
-
     if "Shift_L" in keys:
         placeObjective(event)
+    else:
+        selected = False
+        for floor in level["floors"]:
+            if Point(fromScreen(mousePos)).within(Polygon(floor["points"])):
+                selectedIndex = level["floors"].index(floor)
+                selected = True
+
+        if not selected: selectedIndex = -1
 
 
 def rclickPress(event):
