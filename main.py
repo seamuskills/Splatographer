@@ -745,8 +745,9 @@ while not dead:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
 
     if level["symmetryPoint"]:
-        canvas.create_rectangle(camera[0] + level["symmetryPoint"][0] - 2, camera[1] + level["symmetryPoint"][1] - 2,
-                                camera[0] + level["symmetryPoint"][0] + 2, camera[1] + level["symmetryPoint"][1] + 2,
+        screen = toScreen(level["symmetryPoint"])
+        canvas.create_rectangle(screen[0] - 2, screen[1] - 2,
+                                screen[0] + 2, screen[1] + 2,
                                 fill=TOMATO)
 
     for point in tempPoints:
