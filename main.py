@@ -11,7 +11,7 @@ from tkinter import simpledialog
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 0.3
+VERSION = 0.4
 
 print("Splatographer version: " + str(VERSION))
 
@@ -24,7 +24,7 @@ level = {
     "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
     "rotated": "rotated",  # is this level rotated or flipped? valid values: rotated, x, y
     "objectives": {
-        "zones": [],  # list of splatzones, same format as a floor
+        "zones": [],  # list of splatzones, each zone is a list of points
         "tower": [],  # list of points which lay out the path, a third entry can make the point a checkpoint.
         "rain": [],  # list of coordinates for podiums be them checkpoints or goals
         "clams": []  # basket coordinates
@@ -600,10 +600,14 @@ def scroll(event):
 
 
 def placeObjective(event):
+    global tempPoints
     if currentLayer < 2:
         return
 
-    if currentLayer > 2:
+    if currentLayer == 2 and len(tempPoints) >= 3:
+        level["objectives"][layerKey[currentLayer]].append(tempPoints)
+        tempPoints = []
+    else:
         for objective in level["objectives"][layerKey[currentLayer]]:
             distance = ((objective[0] - snappedMouse()[0]) ** 2 + (objective[1] - snappedMouse()[1]) ** 2) ** 0.5
             if distance < grid / 2:
@@ -756,7 +760,11 @@ while not dead:
                                 absolute[1] + 4, fill=RED)
 
     #objective drawing
-    if currentLayer == 3:
+    if currentLayer == 2:
+        for zone in level["objectives"]["zones"]:
+            for index in range(len(zone)):
+                canvas.create_line(toScreen(zone[index]), toScreen(zone[(index - 1) % len(zone)]), fill=PURPLE, width=3)
+    elif currentLayer == 3:
         for point in level["objectives"]["tower"]:
             width = 2 if len(point) == 2 else 25 * zoom
             absolute = toScreen(point)
