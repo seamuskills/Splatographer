@@ -614,7 +614,7 @@ def placeObjective(event):
                 level["objectives"][layerKey[currentLayer]].remove(objective)
                 return
         level["objectives"][layerKey[currentLayer]].append(snappedMouse())
-        if currentLayer == 3 and "Control_L" in keys:
+        if (currentLayer == 3 or currentLayer == 5) and "Control_L" in keys:
             level["objectives"][layerKey[currentLayer]][-1].append(True)
 
 
@@ -778,10 +778,13 @@ while not dead:
             absolute = toScreen(podium)
             canvas.create_oval(absolute[0] - 25, absolute[1] - 25, absolute[0] + 25, absolute[1] + 25, fill=PURPLE, outline=LIGHT_PURPLE, width=5)
     elif currentLayer == 5:
-        for basket in level["objectives"]["clams"]:
-            absolute = toScreen(basket)
-            canvas.create_rectangle(absolute[0] - 25 * zoom, absolute[1] - 25 * zoom, absolute[0] + 25 * zoom, absolute[1] + 25 * zoom, fill=PURPLE, outline=LIGHT_PURPLE, width=5, stipple="@" + resource_path("images\\mesh.xbm"))
-
+        for objective in level["objectives"]["clams"]:
+            absolute = toScreen(objective)
+            if len(objective) > 2:
+                canvas.create_rectangle(absolute[0] - 25 * zoom, absolute[1] - 25 * zoom, absolute[0] + 25 * zoom, absolute[1] + 25 * zoom, fill=PURPLE, outline=LIGHT_PURPLE, width=5, stipple="@" + resource_path("images\\mesh.xbm"))
+            else:
+                canvas.create_oval(absolute[0] - 5, absolute[1] - 5, absolute[0] + 5, absolute[1] + 5, fill=PURPLE,
+                                   outline=LIGHT_PURPLE, width=2)
     if "Shift_L" in keys:
         mpoint = snappedMouse()
         if snapping:
