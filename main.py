@@ -613,6 +613,11 @@ def placeObjective(event):
         return
 
     if currentLayer == 2:
+        if len(tempPoints) == 0:
+            for zone in level["objectives"]["zones"]:
+                if Point(fromScreen(mousePos)).within(Polygon(zone)):
+                    level["objectives"]["zones"].remove(zone)
+
         if len(tempPoints) < 3: return
         level["objectives"][layerKey[currentLayer]].append(tempPoints)
         tempPoints = []
@@ -797,7 +802,7 @@ while not dead:
                 if level["objectives"]["tower"].index(point) > 0:
                     previous = toScreen(symmetrical(level["objectives"]["tower"][level["objectives"]["tower"].index(point) - 1]))
                     canvas.create_line(previous[0], previous[1], reflected[0], reflected[1], width=3, fill=LIGHT_GREEN)
-        if level["symmetryPoint"]:
+        if level["symmetryPoint"] and len(level["objectives"]["tower"]) > 0:
             previous = toScreen(level["objectives"]["tower"][0 if level["towerStart"] else -1])
             reflected = toScreen(symmetrical(level["objectives"]["tower"][0 if level["towerStart"] else -1]))
             mid = [(previous[0] + reflected[0]) / 2, (previous[1] + reflected[1]) / 2]
