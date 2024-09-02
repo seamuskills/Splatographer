@@ -26,7 +26,7 @@ level = {
     "objectives": {
         "zones": [],  # list of splatzones, each zone is a list of points
         "tower": [],  # list of points which lay out the path, a third entry can make the point a checkpoint.
-        "rain": [],  # list of coordinates for podiums be them checkpoints or goals
+        "rain": [],  # list of coordinates for podiums be them checkpoints or goals, third entry in a datapoint can be the rainmaker itself if needed.
         "clams": []  # basket coordinates
     }
 }
@@ -614,7 +614,12 @@ def placeObjective(event):
                 level["objectives"][layerKey[currentLayer]].remove(objective)
                 return
         level["objectives"][layerKey[currentLayer]].append(snappedMouse())
-        if (currentLayer == 3 or currentLayer == 5) and "Control_L" in keys:
+        if (currentLayer > 3) and "Control_L" in keys:
+            if currentLayer == 4:
+                for point in level["objectives"]["rain"]: #make sure only one rainmaker exists
+                    if len(point) > 2:
+                        level["objectives"]["rain"].remove(point)
+                        break
             level["objectives"][layerKey[currentLayer]][-1].append(True)
 
 
@@ -775,8 +780,10 @@ while not dead:
                 canvas.create_line(previous[0], previous[1], absolute[0], absolute[1], width=3, fill=LIGHT_PURPLE)
     elif currentLayer == 4:
         for podium in level["objectives"]["rain"]:
+            fill = PURPLE if len(podium) == 2 else YELLOW
+            size = 25 if len(podium) == 2 else 15
             absolute = toScreen(podium)
-            canvas.create_oval(absolute[0] - 25, absolute[1] - 25, absolute[0] + 25, absolute[1] + 25, fill=PURPLE, outline=LIGHT_PURPLE, width=5)
+            canvas.create_oval(absolute[0] - size, absolute[1] - size, absolute[0] + size, absolute[1] + size, fill=fill, outline=LIGHT_PURPLE, width=5)
     elif currentLayer == 5:
         for objective in level["objectives"]["clams"]:
             absolute = toScreen(objective)
