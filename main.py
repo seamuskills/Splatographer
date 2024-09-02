@@ -19,7 +19,7 @@ autosave_time = time.time()
 
 path = ""
 
-level = {
+levelTemplate = {
     "floors": [],
     "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
     "rotated": "rotated",  # is this level rotated or flipped? valid values: rotated, x, y
@@ -31,6 +31,8 @@ level = {
         "clams": []  # basket coordinates
     }
 }
+
+level = levelTemplate.copy()
 
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave alone the credit to me :)
 
@@ -64,23 +66,8 @@ pyinstaller --noconfirm --onefile --windowed --add-data "./images;images/" --ico
 
 
 def validateLevel():  # this will make sure that the level file is fully valid
-    if not "floors" in level:
-        level["floors"] = []
-    else:
-        for floor in level["floors"]:
-            if not "points" in floor:
-                level["floors"].remove(floor)
-            if not "type" in floor:
-                floor["type"] = 0
-            if not "height" in floor:
-                floor["height"] = 100
-            if not "layer" in floor:
-                floor["layer"] = 0
-
-    if not "symmetryPoint" in level:
-        level["symmetryPoint"] = []
-    if not "rotated" in level:
-        level["rotated"] = "rotated"
+    global level
+    level = levelTemplate | level
 
     save()
 
