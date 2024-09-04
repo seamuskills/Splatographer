@@ -20,15 +20,17 @@ autosave_time = time.time()
 path = ""
 
 levelTemplate = {
-    "spawn": [], # A coordinate pair for where the spawnpoint should be.
+    "spawn": [],  # A coordinate pair for where the spawnpoint should be.
     "floors": [],
     "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
     "rotated": "rotated",  # is this level rotated or flipped? valid values: rotated, x, y
-    "towerStart": True, # the "start" of the tower path is either index 0 or -1 if this value is True or False respectively
+    "towerStart": True,
+    # the "start" of the tower path is either index 0 or -1 if this value is True or False respectively
     "objectives": {
         "zones": [],  # list of splatzones, each zone is a list of points
         "tower": [],  # list of points which lay out the path, a third entry can make the point a checkpoint.
-        "rain": [],  # list of coordinates for podiums be them checkpoints or goals, third entry in a datapoint can be the rainmaker itself if needed.
+        "rain": [],
+        # list of coordinates for podiums be them checkpoints or goals, third entry in a datapoint can be the rainmaker itself if needed.
         "clams": []  # basket coordinates
     }
 }
@@ -112,6 +114,7 @@ LIGHT_GREEN = "#00EA0F"
 RED = "#ff3f14"
 TOMATO = "#E46F3B"
 LIGHT_GREY = "#8D8D8D"
+
 
 def gridinc(*args):
     global grid
@@ -290,8 +293,10 @@ def toPoints(shape):
     points = mapping(shape)["coordinates"][0]
     return [[point[0], point[1]] for point in points]
 
+
 def flipTowerPath():
     level["towerStart"] = not level["towerStart"]
+
 
 def setSymmetry(*args):
     level["symmetryPoint"] = snappedMouse()
@@ -572,6 +577,7 @@ def toScreen(coords):
 def fromScreen(coords):
     return [round(coords[0] / zoom, 3) - camera[0], round(coords[1] / zoom, 3) - camera[1]]
 
+
 def symmetrical(point):
     if not level["symmetryPoint"]:
         return [0, 0]
@@ -590,6 +596,7 @@ def symmetrical(point):
     if level["rotated"] == "y":
         ydiff = point[1] - level["symmetryPoint"][1]
         return [point[0], point[1] - (ydiff * 2)]
+
 
 def scroll(event):
     global zoom
@@ -620,7 +627,7 @@ def placeObjective(event):
         level["objectives"][layerKey[currentLayer]].append(snappedMouse())
         if (currentLayer >= 3) and "Control_L" in keys:
             if currentLayer == 4:
-                for point in level["objectives"]["rain"]: #make sure only one rainmaker exists
+                for point in level["objectives"]["rain"]:  # make sure only one rainmaker exists
                     if len(point) > 2:
                         level["objectives"]["rain"].remove(point)
                         break
@@ -767,16 +774,19 @@ while not dead:
     tempPointWidth = 4 * zoom
     for point in tempPoints:
         absolute = toScreen(point)
-        canvas.create_rectangle(absolute[0] - tempPointWidth, absolute[1] - tempPointWidth, absolute[0] + tempPointWidth,
+        canvas.create_rectangle(absolute[0] - tempPointWidth, absolute[1] - tempPointWidth,
+                                absolute[0] + tempPointWidth,
                                 absolute[1] + tempPointWidth, fill=RED)
 
-    #objective drawing
+    # objective drawing
     if currentLayer == 2:
         for zone in level["objectives"]["zones"]:
             for index in range(len(zone)):
-                canvas.create_line(toScreen(zone[index]), toScreen(zone[(index - 1) % len(zone)]), fill=PURPLE, width=3 * zoom)
+                canvas.create_line(toScreen(zone[index]), toScreen(zone[(index - 1) % len(zone)]), fill=PURPLE,
+                                   width=3 * zoom)
                 if level["symmetryPoint"] and showSymmetry:
-                    canvas.create_line(toScreen(symmetrical(zone[index])), toScreen(symmetrical(zone[(index - 1) % len(zone)])), fill=GREEN, width=3 * zoom)
+                    canvas.create_line(toScreen(symmetrical(zone[index])),
+                                       toScreen(symmetrical(zone[(index - 1) % len(zone)])), fill=GREEN, width=3 * zoom)
     elif currentLayer == 3:
         for point in level["objectives"]["tower"]:
             width = 2 * zoom if len(point) == 2 else 25 * zoom
@@ -786,14 +796,17 @@ while not dead:
                                     absolute[1] + width, fill=PURPLE, outline=LIGHT_PURPLE, width=1 * zoom)
             if level["objectives"]["tower"].index(point) > 0:
                 previous = toScreen(level["objectives"]["tower"][level["objectives"]["tower"].index(point) - 1])
-                canvas.create_line(previous[0], previous[1], absolute[0], absolute[1], width=3 * zoom, fill=LIGHT_PURPLE)
+                canvas.create_line(previous[0], previous[1], absolute[0], absolute[1], width=3 * zoom,
+                                   fill=LIGHT_PURPLE)
 
             if level["symmetryPoint"] and showSymmetry:
                 canvas.create_rectangle(reflected[0] - width, reflected[1] - width, reflected[0] + width,
                                         reflected[1] + width, fill=GREEN, outline=LIGHT_GREEN, width=1 * zoom)
                 if level["objectives"]["tower"].index(point) > 0:
-                    previous = toScreen(symmetrical(level["objectives"]["tower"][level["objectives"]["tower"].index(point) - 1]))
-                    canvas.create_line(previous[0], previous[1], reflected[0], reflected[1], width=3 * zoom, fill=LIGHT_GREEN)
+                    previous = toScreen(
+                        symmetrical(level["objectives"]["tower"][level["objectives"]["tower"].index(point) - 1]))
+                    canvas.create_line(previous[0], previous[1], reflected[0], reflected[1], width=3 * zoom,
+                                       fill=LIGHT_GREEN)
         if level["symmetryPoint"] and len(level["objectives"]["tower"]) > 0 and showSymmetry:
             previous = toScreen(level["objectives"]["tower"][0 if level["towerStart"] else -1])
             reflected = toScreen(symmetrical(level["objectives"]["tower"][0 if level["towerStart"] else -1]))
@@ -801,48 +814,58 @@ while not dead:
             canvas.create_line(previous[0], previous[1], mid[0], mid[1], width=3 * zoom, fill=LIGHT_PURPLE)
             canvas.create_line(mid[0], mid[1], reflected[0], reflected[1], width=3 * zoom, fill=LIGHT_GREEN)
     elif currentLayer == 4:
-        maker = False # this there already a rainmaker or should the symmetry point decide the position
+        maker = False  # this there already a rainmaker or should the symmetry point decide the position
         for podium in level["objectives"]["rain"]:
             fill = PURPLE if len(podium) == 2 else YELLOW
             size = 25 * zoom if len(podium) == 2 else 15 * zoom
             absolute = toScreen(podium)
             reflected = toScreen(symmetrical(podium))
-            canvas.create_oval(absolute[0] - size, absolute[1] - size, absolute[0] + size, absolute[1] + size, fill=fill, outline=LIGHT_PURPLE, width=5 * zoom)
+            canvas.create_oval(absolute[0] - size, absolute[1] - size, absolute[0] + size, absolute[1] + size,
+                               fill=fill, outline=LIGHT_PURPLE, width=5 * zoom)
             if level["symmetryPoint"] and showSymmetry:
                 if len(podium) < 3:
-                    canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size, reflected[1] + size,
-                                   fill=GREEN, outline=LIGHT_GREEN, width=5 * zoom)
+                    canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size,
+                                       reflected[1] + size,
+                                       fill=GREEN, outline=LIGHT_GREEN, width=5 * zoom)
                 else:
                     maker = True
         if not maker and level["symmetryPoint"] and showSymmetry:
             point = toScreen(level["symmetryPoint"])
-            canvas.create_oval(point[0] - 15, point[1] - 15, point[0] + 15, point[1] + 15, fill=YELLOW, outline=LIGHT_PURPLE, width=5 * zoom)
+            canvas.create_oval(point[0] - 15, point[1] - 15, point[0] + 15, point[1] + 15, fill=YELLOW,
+                               outline=LIGHT_PURPLE, width=5 * zoom)
     elif currentLayer == 5:
         for objective in level["objectives"]["clams"]:
             absolute = toScreen(objective)
             reflected = toScreen(symmetrical(objective))
             if len(objective) > 2:
-                canvas.create_rectangle(absolute[0] - 25 * zoom, absolute[1] - 25 * zoom, absolute[0] + 25 * zoom, absolute[1] + 25 * zoom, fill=PURPLE, outline=LIGHT_PURPLE, width=5 * zoom, stipple="@" + resource_path("images\\mesh.xbm"))
+                canvas.create_rectangle(absolute[0] - 25 * zoom, absolute[1] - 25 * zoom, absolute[0] + 25 * zoom,
+                                        absolute[1] + 25 * zoom, fill=PURPLE, outline=LIGHT_PURPLE, width=5 * zoom,
+                                        stipple="@" + resource_path("images\\mesh.xbm"))
             else:
-                canvas.create_oval(absolute[0] - 5 * zoom, absolute[1] - 5 * zoom, absolute[0] + 5 * zoom, absolute[1] + 5 * zoom, fill=PURPLE,
+                canvas.create_oval(absolute[0] - 5 * zoom, absolute[1] - 5 * zoom, absolute[0] + 5 * zoom,
+                                   absolute[1] + 5 * zoom, fill=PURPLE,
                                    outline=LIGHT_PURPLE, width=2 * zoom)
 
             if level["symmetryPoint"] and showSymmetry:
                 if len(objective) > 2:
-                    canvas.create_rectangle(reflected[0] - 25 * zoom, reflected[1] - 25 * zoom, reflected[0] + 25 * zoom,
+                    canvas.create_rectangle(reflected[0] - 25 * zoom, reflected[1] - 25 * zoom,
+                                            reflected[0] + 25 * zoom,
                                             reflected[1] + 25 * zoom, fill=GREEN, outline=LIGHT_GREEN, width=5 * zoom,
                                             stipple="@" + resource_path("images\\mesh.xbm"))
                 else:
-                    canvas.create_oval(reflected[0] - 5 * zoom, reflected[1] - 5 * zoom, reflected[0] + 5 * zoom, reflected[1] + 5 * zoom, fill=GREEN,
+                    canvas.create_oval(reflected[0] - 5 * zoom, reflected[1] - 5 * zoom, reflected[0] + 5 * zoom,
+                                       reflected[1] + 5 * zoom, fill=GREEN,
                                        outline=LIGHT_GREEN, width=2 * zoom)
 
     if len(level["spawn"]) == 2:
         size = 40 * zoom
         screen = toScreen(level["spawn"])
-        canvas.create_oval(screen[0] - size, screen[1] - size, screen[0] + size, screen[1] + size, fill=PURPLE, outline=LIGHT_GREY, width=8 * zoom)
+        canvas.create_oval(screen[0] - size, screen[1] - size, screen[0] + size, screen[1] + size, fill=PURPLE,
+                           outline=LIGHT_GREY, width=8 * zoom)
         if level["symmetryPoint"] and showSymmetry:
             reflected = toScreen(symmetrical(level["spawn"]))
-            canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size, reflected[1] + size, fill=GREEN,
+            canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size, reflected[1] + size,
+                               fill=GREEN,
                                outline=LIGHT_GREY, width=8 * zoom)
     if "Shift_L" in keys:
         mpoint = snappedMouse()
