@@ -20,6 +20,7 @@ autosave_time = time.time()
 path = ""
 
 levelTemplate = {
+    "spawn": [], # A coordinate pair for where the spawnpoint should be.
     "floors": [],
     "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
     "rotated": "rotated",  # is this level rotated or flipped? valid values: rotated, x, y
@@ -110,7 +111,7 @@ GREEN = "#006805"
 LIGHT_GREEN = "#00EA0F"
 RED = "#ff3f14"
 TOMATO = "#E46F3B"
-
+LIGHT_GREY = "#8D8D8D"
 
 def gridinc(*args):
     global grid
@@ -527,6 +528,8 @@ def mousePress(event):
 
     if "Shift_L" in keys:
         placeObjective(event)
+    elif "Control_L" in keys:
+        level["spawn"] = snappedMouse()
     else:
         selected = False
         for floor in level["floors"]:
@@ -830,6 +833,14 @@ while not dead:
                 else:
                     canvas.create_oval(reflected[0] - 5, reflected[1] - 5, reflected[0] + 5, reflected[1] + 5, fill=GREEN,
                                        outline=LIGHT_GREEN, width=2)
+
+    if len(level["spawn"]) == 2:
+        screen = toScreen(level["spawn"])
+        canvas.create_oval(screen[0] - 40, screen[1] - 40, screen[0] + 40, screen[1] + 40, fill=PURPLE, outline=LIGHT_GREY, width=8)
+        if level["symmetryPoint"] and showSymmetry:
+            reflected = toScreen(symmetrical(level["spawn"]))
+            canvas.create_oval(reflected[0] - 40, reflected[1] - 40, reflected[0] + 40, reflected[1] + 40, fill=GREEN,
+                               outline=LIGHT_GREY, width=8)
     if "Shift_L" in keys:
         mpoint = snappedMouse()
         if snapping:
