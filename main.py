@@ -701,37 +701,7 @@ applySettings()
 
 dead = False
 
-while not dead:
-    if hash(str(level)) != previousHash:
-        previousHash = hash(str(level))
-        askSave = True
-
-    if path == "":
-        root.title("Splatographer | No File")
-    else:
-        if not os.path.exists(path):
-            root.title("Splatographer | " + path + " [WARNING] path does not appear to lead to a valid file [WARNING]")
-        else:
-            root.title("Splatographer | " + path + (" Not saved*" if askSave else " Saved!"))
-
-    zero = toScreen([0, 0])
-
-    if selectedIndex < 0:
-        level["floors"] = sorted(level["floors"], key=lambda x: x["height"])
-    canvas.delete("all")
-    if drawGrid:
-        yval = camera[1] % grid * zoom
-        while yval < camera[1] % grid * zoom + canvas.winfo_height():
-            canvas.create_line(0, yval, canvas.winfo_width(), yval, fill=LIGHT_BLUE)
-            yval += grid * zoom
-
-        xval = camera[0] % grid * zoom
-        while xval < camera[0] % grid * zoom + canvas.winfo_width():
-            canvas.create_line(xval, 0, xval, canvas.winfo_height(), fill=LIGHT_BLUE)
-            xval += grid * zoom
-
-    canvas.create_rectangle(zero[0] - 5 * zoom, zero[1] - 5 * zoom, zero[0] + 5 * zoom, zero[1] + 5 * zoom, fill=YELLOW)
-
+def drawFloors(canvas):
     for floor in level["floors"]:
         if not (floor["layer"] == 0 or floor["layer"] == currentLayer):
             continue
@@ -787,20 +757,7 @@ while not dead:
         for point in drawSymmetry:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
 
-    if level["symmetryPoint"]:
-        pointWidth = 2 * zoom
-        screen = toScreen(level["symmetryPoint"])
-        canvas.create_rectangle(screen[0] - pointWidth, screen[1] - pointWidth,
-                                screen[0] + pointWidth, screen[1] + pointWidth,
-                                fill=TOMATO)
-
-    tempPointWidth = 4 * zoom
-    for point in tempPoints:
-        absolute = toScreen(point)
-        canvas.create_rectangle(absolute[0] - tempPointWidth, absolute[1] - tempPointWidth,
-                                absolute[0] + tempPointWidth,
-                                absolute[1] + tempPointWidth, fill=RED)
-
+def drawObjectives(canvas):
     # objective drawing
     if currentLayer == 2:
         for zone in level["objectives"]["zones"]:
@@ -880,6 +837,7 @@ while not dead:
                                        reflected[1] + 5 * zoom, fill=GREEN,
                                        outline=LIGHT_GREEN, width=2 * zoom)
 
+def drawMisc(canvas):
     for sponge in level["sponges"]:
         screen = toScreen(sponge)
         canvas.create_rectangle(screen[0], screen[1], screen[0] + 32 * zoom, screen[1] + 32 * zoom, fill=PURPLE,
@@ -919,6 +877,58 @@ while not dead:
             canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size, reflected[1] + size,
                                fill=GREEN,
                                outline=LIGHT_GREY, width=8 * zoom)
+
+while not dead:
+    if hash(str(level)) != previousHash:
+        previousHash = hash(str(level))
+        askSave = True
+
+    if path == "":
+        root.title("Splatographer | No File")
+    else:
+        if not os.path.exists(path):
+            root.title("Splatographer | " + path + " [WARNING] path does not appear to lead to a valid file [WARNING]")
+        else:
+            root.title("Splatographer | " + path + (" Not saved*" if askSave else " Saved!"))
+
+    zero = toScreen([0, 0])
+
+    if selectedIndex < 0:
+        level["floors"] = sorted(level["floors"], key=lambda x: x["height"])
+    canvas.delete("all")
+    if drawGrid:
+        yval = camera[1] % grid * zoom
+        while yval < camera[1] % grid * zoom + canvas.winfo_height():
+            canvas.create_line(0, yval, canvas.winfo_width(), yval, fill=LIGHT_BLUE)
+            yval += grid * zoom
+
+        xval = camera[0] % grid * zoom
+        while xval < camera[0] % grid * zoom + canvas.winfo_width():
+            canvas.create_line(xval, 0, xval, canvas.winfo_height(), fill=LIGHT_BLUE)
+            xval += grid * zoom
+
+    canvas.create_rectangle(zero[0] - 5 * zoom, zero[1] - 5 * zoom, zero[0] + 5 * zoom, zero[1] + 5 * zoom, fill=YELLOW)
+
+    drawFloors(canvas)
+
+    if level["symmetryPoint"]:
+        pointWidth = 2 * zoom
+        screen = toScreen(level["symmetryPoint"])
+        canvas.create_rectangle(screen[0] - pointWidth, screen[1] - pointWidth,
+                                screen[0] + pointWidth, screen[1] + pointWidth,
+                                fill=TOMATO)
+
+    tempPointWidth = 4 * zoom
+    for point in tempPoints:
+        absolute = toScreen(point)
+        canvas.create_rectangle(absolute[0] - tempPointWidth, absolute[1] - tempPointWidth,
+                                absolute[0] + tempPointWidth,
+                                absolute[1] + tempPointWidth, fill=RED)
+
+    drawObjectives(canvas)
+
+    drawMisc(canvas)
+
     if "Shift_L" in keys:
         mpoint = snappedMouse()
         if snapping:
