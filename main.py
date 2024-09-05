@@ -11,7 +11,7 @@ from tkinter import simpledialog
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 0.5
+VERSION = 0.6
 
 print("Splatographer version: " + str(VERSION))
 
@@ -32,7 +32,9 @@ levelTemplate = {
         "rain": [],
         # list of coordinates for podiums be them checkpoints or goals, third entry in a datapoint can be the rainmaker itself if needed.
         "clams": []  # basket coordinates
-    }
+    },
+    "rails": [],  # 2d array of coordinate lists ( all -> rail -> coordinate pair, 3d list)
+    "sponges": []  # 2d array of coordinate pairs listing all existing sponges
 }
 
 level = levelTemplate.copy()
@@ -526,13 +528,34 @@ def mouseDrag(event):
     dragPrevious = [event.x, event.y]
 
 
+def placeMiscElement(event):
+    global tempPoints
+    for sponge in level["sponges"]:
+        if math.dist(sponge, snappedMouse()) < grid / 2:
+            level["sponges"].remove(sponge)
+            return
+    for rail in level["rails"]:
+        if math.dist(rail[0], snappedMouse()) < grid / 2:
+            level["rails"].remove(rail)
+            return
+    if len(tempPoints) >= 2:
+        level["rails"].append(tempPoints.copy())
+        tempPoints = []
+    else:
+        level["sponges"].append(snappedMouse())
+
+
 def mousePress(event):
     global dragPrevious
     global selectedIndex
+    global tempPoints
     dragPrevious = [event.x, event.y]
 
     if "Shift_L" in keys:
-        placeObjective(event)
+        if 'Alt_L' in keys:
+            placeMiscElement(event)
+        else:
+            placeObjective(event)
     elif "Control_L" in keys:
         level["spawn"] = snappedMouse()
     else:
@@ -856,6 +879,35 @@ while not dead:
                     canvas.create_oval(reflected[0] - 5 * zoom, reflected[1] - 5 * zoom, reflected[0] + 5 * zoom,
                                        reflected[1] + 5 * zoom, fill=GREEN,
                                        outline=LIGHT_GREEN, width=2 * zoom)
+
+    for sponge in level["sponges"]:
+        screen = toScreen(sponge)
+        canvas.create_rectangle(screen[0], screen[1], screen[0] + 32 * zoom, screen[1] + 32 * zoom, fill=PURPLE,
+                                width=0)
+        if level["symmetryPoint"] and showSymmetry:
+            screen = toScreen(symmetrical(sponge))
+            secondPoint = toScreen(symmetrical(
+                [sponge[0] + 32 * zoom, sponge[1] + 32 * zoom]))  # Will not be properly symmetrical unless I do this.
+            canvas.create_rectangle(screen[0], screen[1], secondPoint[0], secondPoint[1], fill=GREEN,
+                                    width=0)
+
+    for rail in level["rails"]:
+        for point in rail:
+            screen = toScreen(point)
+            screenSymm = toScreen(symmetrical(point))
+            size = 10 * zoom if rail.index(point) == 0 else 5 * zoom
+            canvas.create_oval(screen[0] - size, screen[1] - size, screen[0] + size, screen[1] + size, fill=PURPLE,
+                               width=0)
+            if level["symmetryPoint"] and showSymmetry:
+                canvas.create_oval(screenSymm[0] - size, screenSymm[1] - size, screenSymm[0] + size,
+                                   screenSymm[1] + size, fill=GREEN,
+                                   width=0)
+            if rail.index(point) > 0:
+                prev = toScreen(rail[rail.index(point) - 1])
+                canvas.create_line(screen[0], screen[1], prev[0], prev[1], fill=PURPLE, width=2)
+                if level["symmetryPoint"] and showSymmetry:
+                    prevSymm = toScreen(symmetrical(rail[rail.index(point) - 1]))
+                    canvas.create_line(screenSymm[0], screenSymm[1], prevSymm[0], prevSymm[1], fill=GREEN, width=2)
 
     if len(level["spawn"]) == 2:
         size = 40 * zoom
