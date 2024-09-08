@@ -7,6 +7,7 @@ import time
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import simpledialog
+from PIL import Image, ImageDraw
 
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
@@ -409,6 +410,43 @@ class Settings:
         return valid
 
 
+def export(*args):
+    allX = []
+    allY = []
+    for floor in level["floors"]:
+        for point in floor["points"]:
+            allX.append(point[0])
+            allY.append(point[1])
+
+    if len(level["floors"]) == 0:
+        print("[Export] Failed! Level has no floors!")
+        return
+
+    allX.sort()
+    allY.sort()
+
+    bounds = [allX[0] - 25, allY[0] - 25, allX[-1] + 25, allY[-1] + 25] #  format: [x, y, x, y] min first then max
+    size = [round(abs(bounds[0] - bounds[2]) * 2), round(abs(bounds[1] - bounds[3]) * 2)]
+
+    exported = Image.new("RGBA", size)
+    draw = ImageDraw.Draw(exported)
+
+    draw.rectangle([0, 0, *size], fill=DARK_BLUE)
+
+    for floor in level["floors"]:
+        points = [tuple(point) for point in floor["points"]] #  convert to tuples in the list because PIL is stupid.
+        reflected = [tuple(symmetrical(point)) for point in floor["points"]]
+        fill = "#" + (
+            hex(int(
+                255 * (floor["height"] / 100)))
+            .removeprefix("0x")) * 3
+
+        draw.polygon(points, fill=fill, width=0)
+        if level["symmetryPoint"]:
+            draw.polygon(reflected, fill=fill, width=0)
+
+    exported.save(fp=resource_path("test.png"))
+
 root = tk.Tk()  ##create window
 root.iconbitmap(resource_path("images\\mappericon.ico"))
 root.geometry("1600x900")
@@ -420,6 +458,7 @@ fileMenu = tk.Menu(topBar, tearoff=0)
 fileMenu.add_command(label="New Map", command=newFile)
 fileMenu.add_command(label="Open Map", command=openFile)
 fileMenu.add_command(label="Save Map", command=save)
+fileMenu.add_command(label="Export Image", command=export)
 fileMenu.add_command(label="preferences", command=settingsWindow)
 
 floorMenu = tk.Menu(topBar, tearoff=0)
@@ -466,6 +505,7 @@ canvas.pack()
 root.bind(sequence="<Control-o>", func=openFile)
 root.bind(sequence="<Control-s>", func=save)
 root.bind(sequence="<Control-n>", func=newFile)
+root.bind(sequence="<Control-e>", func=export)
 root.bind(sequence="<Delete>", func=deleteFloor)
 root.bind(sequence="<BackSpace>", func=deleteFloor)
 root.bind(sequence="<]>", func=gridinc)
@@ -701,6 +741,7 @@ applySettings()
 
 dead = False
 
+
 def drawFloors(canvas):
     for floor in level["floors"]:
         if not (floor["layer"] == 0 or floor["layer"] == currentLayer):
@@ -935,8 +976,10 @@ while not dead:
             mpoint = toScreen(mpoint)
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
-    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}%".format(grid, snapping, layerKey[currentLayer],
-                                                                                round(zoom * 100)),
+    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}% Mouse: {}".format(grid, snapping,
+                                                                                          layerKey[currentLayer],
+                                                                                          round(zoom * 100),
+                                                                                          snappedMouse()),
                        fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
     root.update()
