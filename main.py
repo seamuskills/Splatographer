@@ -425,8 +425,15 @@ def export(*args):
     allX.sort()
     allY.sort()
 
-    bounds = [allX[0] - 25, allY[0] - 25, allX[-1] + 25, allY[-1] + 25] #  format: [x, y, x, y] min first then max
-    size = [round(abs(bounds[0] - bounds[2]) * 2), round(abs(bounds[1] - bounds[3]) * 2)]
+    symmetry = level["symmetryPoint"]
+
+    offset = 25
+    bounds = [allX[0] - offset, allY[0] - offset, allX[-1] + offset, allY[-1] + offset] #  format: [x, y, x, y] min first then max
+    size = [round(abs(bounds[0] - bounds[2])), round(abs(bounds[1] - bounds[3]))]
+
+    if symmetry:
+        size[0] *= 2
+        size[1] *= 2
 
     exported = Image.new("RGBA", size)
     draw = ImageDraw.Draw(exported)
@@ -434,18 +441,66 @@ def export(*args):
     draw.rectangle([0, 0, *size], fill=DARK_BLUE)
 
     for floor in level["floors"]:
-        points = [tuple(point) for point in floor["points"]] #  convert to tuples in the list because PIL is stupid.
-        reflected = [tuple(symmetrical(point)) for point in floor["points"]]
+        points = [(point[0] + offset, point[1] + offset) for point in floor["points"]] #  convert to tuples in the list because PIL is stupid.
+        reflected = [(symmetrical(point)[0] + offset, symmetrical(point)[1] + offset) for point in floor["points"]]
         fill = "#" + (
             hex(int(
                 255 * (floor["height"] / 100)))
             .removeprefix("0x")) * 3
 
-        draw.polygon(points, fill=fill, width=0)
-        if level["symmetryPoint"]:
-            draw.polygon(reflected, fill=fill, width=0)
+        if floor["type"] == 1: fill = (127, 127, 127)
+
+        if floor["type"] < 2:
+            draw.polygon(points, fill=fill, width=0)
+            if symmetry:
+                draw.polygon(reflected, fill=fill, width=0)
+        else:
+            draw.polygon(points, fill=(0, 0, 0, 0), width=1, outline=fill)
+            if symmetry:
+                draw.polygon(reflected, fill=(0, 0, 0, 0), width=1, outline=fill)
+
+        if floor["type"] > 0:
+            grate = Image.open(resource_path("images\\grate.xbm"))
+            unink = Image.open(resource_path("images\\uninkable.xbm"))
+
+            sortedx = points.copy()
+            sortedx.sort(key=lambda x: x[0])
+            sortedy = points.copy()
+            sortedy.sort(key=lambda x: x[1])
+
+            bbox = [math.floor(sortedx[0][0]), math.floor(sortedy[0][1]), math.ceil(sortedx[-1][0]), math.ceil(sortedy[-1][1])]
+
+            shape = Polygon(points)
+
+            for x in range(bbox[0], bbox[2]):
+                for y in range(bbox[1], bbox[3]):
+                    if Point(x, y).within(shape):
+                        if floor["type"] == 2 and grate.getpixel((x % grate.width, y % grate.height)) > 0:
+                            draw.point([x, y], fill=fill)
+                        elif floor["type"] == 1 and unink.getpixel((x % unink.width, y % unink.height)) > 0:
+                            draw.point([x, y], fill=(255, 255, 255))
+
+            if symmetry:
+                sortedx = reflected.copy()
+                sortedx.sort(key=lambda x: x[0])
+                sortedy = reflected.copy()
+                sortedy.sort(key=lambda x: x[1])
+                bbox = [math.floor(sortedx[0][0]), math.floor(sortedy[0][1]), math.ceil(sortedx[-1][0]),
+                        math.ceil(sortedy[-1][1])]
+
+                shape = Polygon(reflected)
+                for x in range(bbox[0], bbox[2]):
+                    for y in range(bbox[1], bbox[3]):
+                        if Point(x, y).within(shape):
+                            if floor["type"] == 2 and grate.getpixel((x % grate.width, y % grate.height)) > 0:
+                                draw.point([x, y], fill=fill)
+                            elif floor["type"] == 1 and unink.getpixel((x % unink.width, y % unink.height)) > 0:
+                                draw.point([x, y], fill=(255, 255, 255))
+
 
     exported.save(fp=resource_path("test.png"))
+
+    messagebox.showinfo(title="Splatographer Export", message="Map export success!")
 
 root = tk.Tk()  ##create window
 root.iconbitmap(resource_path("images\\mappericon.ico"))
