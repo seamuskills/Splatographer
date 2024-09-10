@@ -41,6 +41,7 @@ levelTemplate = {
 level = levelTemplate.copy()
 
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave alone the credit to me :)
+# I know some of this code can be replaced with match for pattern matching but the version of python I used for this didn't have it :\
 
 tempPoints = []
 copiedFloor = {}
@@ -144,6 +145,8 @@ def newFile(*args):
     global level
     clear = len(path) != 0
     potentialPath = filedialog.asksaveasfilename(title="Make new map", filetypes=[("Splat map files", ".splat")])
+    if "Control_L" in keys: keys.remove("Control_L")  # fix control counting as being pressed when it's not.
+
     if len(potentialPath) == 0:
         return
     path = potentialPath
@@ -164,6 +167,8 @@ def openFile(*args):  # *args so the hotkey can be used lol
     global askSave
     global previousHash
     newPath = filedialog.askopenfilename(title="Open existing map", filetypes=[("Splat map files", ".splat")])
+    if "Control_L" in keys: keys.remove("Control_L")  # fix control counting as being pressed when it's not.
+
     if len(newPath) > 0:
         if re.search("(?:\.splat)$", newPath):
             path = newPath
@@ -428,27 +433,33 @@ def export(*args):
     symmetry = level["symmetryPoint"]
 
     offset = 25
-    bounds = [allX[0] - offset, allY[0] - offset, allX[-1] + offset, allY[-1] + offset] #  format: [x, y, x, y] min first then max
+    bounds = [allX[0] - offset, allY[0] - offset, allX[-1] + offset,
+              allY[-1] + offset]  # format: [x, y, x, y] min first then max
     size = [round(abs(bounds[0] - bounds[2])), round(abs(bounds[1] - bounds[3]))]
 
     if symmetry:
         size[0] *= 2
         size[1] *= 2
 
-    exported = Image.new("RGBA", size)
-    draw = ImageDraw.Draw(exported)
+    exported = Image.new("RGB", size)
+    draw = ImageDraw.Draw(exported, mode="RGBA")
 
     draw.rectangle([0, 0, *size], fill=DARK_BLUE)
 
+    # floor drawing code
     for floor in level["floors"]:
-        points = [(point[0] + offset, point[1] + offset) for point in floor["points"]] #  convert to tuples in the list because PIL is stupid.
-        reflected = [(symmetrical(point)[0] + offset, symmetrical(point)[1] + offset) for point in floor["points"]]
+        if not (floor["layer"] == 0 or floor["layer"] == currentLayer):
+            continue
+        points = [(point[0] - bounds[0], point[1] - bounds[1]) for point in
+                  floor["points"]]  # convert to tuples in the list because PIL is stupid.
+        reflected = [(symmetrical(point)[0] - bounds[0], symmetrical(point)[1] - bounds[1]) for point in
+                     floor["points"]]
         fill = "#" + (
             hex(int(
                 255 * (floor["height"] / 100)))
             .removeprefix("0x")) * 3
 
-        if floor["type"] == 1: fill = (127, 127, 127)
+        if floor["type"] == 1: fill = "#7f7f7f"
 
         if floor["type"] < 2:
             draw.polygon(points, fill=fill, width=0)
@@ -459,7 +470,7 @@ def export(*args):
             if symmetry:
                 draw.polygon(reflected, fill=(0, 0, 0, 0), width=1, outline=fill)
 
-        if floor["type"] > 0:
+        if floor["type"] > 0:  # draw the patterns for the floor types.
             grate = Image.open(resource_path("images\\grate.xbm"))
             unink = Image.open(resource_path("images\\uninkable.xbm"))
 
@@ -468,7 +479,8 @@ def export(*args):
             sortedy = points.copy()
             sortedy.sort(key=lambda x: x[1])
 
-            bbox = [math.floor(sortedx[0][0]), math.floor(sortedy[0][1]), math.ceil(sortedx[-1][0]), math.ceil(sortedy[-1][1])]
+            bbox = [math.floor(sortedx[0][0]), math.floor(sortedy[0][1]), math.ceil(sortedx[-1][0]),
+                    math.ceil(sortedy[-1][1])]
 
             shape = Polygon(points)
 
@@ -497,10 +509,114 @@ def export(*args):
                             elif floor["type"] == 1 and unink.getpixel((x % unink.width, y % unink.height)) > 0:
                                 draw.point([x, y], fill=(255, 255, 255))
 
+    #  objective drawing code
+    if currentLayer == 2:  # zones
+        for zone in level["objectives"]["zones"]:
+            points = [(point[0] - bounds[0], point[1] - bounds[1]) for point in
+                      zone]
+            reflected = [(symmetrical(point)[0] - bounds[0], symmetrical(point)[1] - bounds[1]) for point in zone]
+
+            draw.polygon(points, fill=(0, 0, 0, 0), outline=PURPLE, width=3)
+            if symmetry:
+                draw.polygon(reflected, fill=(0, 0, 0, 0), outline=GREEN, width=3)
+    elif currentLayer == 3:  # tower
+        for point in level["objectives"]["tower"]:
+            absolute = (point[0] - bounds[0], point[1] - bounds[1])
+            reflected = (symmetrical(point)[0] - bounds[0], symmetrical(point)[1] - bounds[1])
+
+            if len(point) == 3:
+                draw.rectangle([absolute[0] - 25, absolute[1] - 25, absolute[0] + 25, absolute[1] + 25], fill=PURPLE,
+                               outline=LIGHT_PURPLE, width=1)
+                if symmetry:
+                    draw.rectangle([reflected[0] - 25, reflected[1] - 25, reflected[0] + 25, reflected[1] + 25],
+                                   fill=GREEN, outline=LIGHT_GREEN, width=1)
+
+            index = level["objectives"]["tower"].index(point)
+            if index > 0:
+                prev = level["objectives"]["tower"][index - 1].copy()
+                refPrev = symmetrical(prev)
+                prev = (prev[0] - bounds[0], prev[1] - bounds[1])
+                refPrev = (refPrev[0] - bounds[0], refPrev[1] - bounds[1])
+
+                draw.line([prev, absolute], fill=LIGHT_PURPLE, width=3)
+                if symmetry:
+                    draw.line([refPrev, reflected], fill=LIGHT_GREEN, width=3)
+
+        if level["symmetryPoint"] and len(level["objectives"]["tower"]) > 0:
+            point1 = level["objectives"]["tower"][0 if level["towerStart"] else -1]
+            point1 = (point1[0] - bounds[0], point1[1] - bounds[1])
+            point2 = symmetrical(level["objectives"]["tower"][0 if level["towerStart"] else -1])
+            point2 = (point2[0] - bounds[0], point2[1] - bounds[1])
+            mid = ((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2)
+            draw.line([point1, mid], fill=LIGHT_PURPLE, width=3)
+            draw.line([point2, mid], fill=LIGHT_GREEN, width=3)
+
+    elif currentLayer == 4:
+        maker = False
+        for podium in level["objectives"]["rain"]:
+            fill = PURPLE if len(podium) == 2 else YELLOW
+            size = 25 if len(podium) == 2 else 15
+
+            absolute = (podium[0] - bounds[0], podium[1] - bounds[1])
+            reflected = symmetrical(podium)
+            reflected = (reflected[0] - bounds[0], reflected[1] - bounds[1])
+
+            draw.circle(absolute, size, fill=fill, outline=LIGHT_PURPLE, width=5)
+            if level["symmetryPoint"]:
+                if len(podium) < 3:
+                    draw.circle(reflected, size, fill=GREEN, outline=LIGHT_GREEN, width=5)
+                else:
+                    maker = True
+        if not maker and level["symmetryPoint"]:
+            point = (level["symmetryPoint"][0] - bounds[0], level["symmetryPoint"][1] - bounds[1])
+            draw.circle(point, 15, fill=YELLOW, outline=LIGHT_PURPLE, width=5)
+    elif currentLayer == 5:
+        mesh = Image.open(resource_path("images\\mesh.xbm"))
+
+        for clam in level["objectives"]["clams"]:
+            absolute = (clam[0] - bounds[0], clam[1] - bounds[1])
+            reflected = symmetrical(clam)
+            reflected = (reflected[0] - bounds[0], reflected[1] - bounds[1])
+
+            if len(clam) == 2:
+                draw.circle(absolute, 5, fill=PURPLE, outline=LIGHT_PURPLE, width=2)
+                if symmetry:
+                    draw.circle(reflected, 5, fill=GREEN, outline=LIGHT_GREEN, width=2)
+            else:
+                for x in range(round(absolute[0] - 25), round(absolute[0] + 25)):
+                    for y in range(round(absolute[1] - 25), round(absolute[1] + 25)):
+                        if mesh.getpixel((x % mesh.width, y % mesh.height)) > 0:
+                            draw.point((x, y), fill=PURPLE)
+                draw.rectangle((absolute[0] - 25, absolute[1] - 25, absolute[0] + 25, absolute[1] + 25),
+                               fill=(0, 0, 0, 0), outline=LIGHT_PURPLE, width=5)
+
+                if symmetry:
+                    for x in range(round(reflected[0] - 25), round(reflected[0] + 25)):
+                        for y in range(round(reflected[1] - 25), round(reflected[1] + 25)):
+                            if mesh.getpixel((x % mesh.width, y % mesh.height)) > 0:
+                                draw.point((x, y), fill=GREEN)
+                    draw.rectangle((reflected[0] - 25, reflected[1] - 25, reflected[0] + 25, reflected[1] + 25),
+                                   fill=(0, 0, 0, 0), outline=LIGHT_GREEN, width=5)
+
+    for sponge in level["sponges"]:
+        absolute = (sponge[0] - bounds[0], sponge[1] - bounds[1])
+        draw.rectangle((absolute[0], absolute[1], absolute[0] + 32, absolute[1] + 32), fill=PURPLE)
+        if symmetry:
+            reflected = symmetrical(sponge)
+            reflected = (reflected[0] - bounds[0], reflected[1] - bounds[1])
+            secondPoint = symmetrical([sponge[0] + 32, sponge[1] + 32])
+            secondPoint = (secondPoint[0] - bounds[0], secondPoint[1] - bounds[1])
+            #  PIL complains if the second coord is less than the first >:(
+            x = [secondPoint[0], reflected[0]]
+            x.sort()
+            y = [secondPoint[1], reflected[1]]
+            y.sort()
+            draw.rectangle((x[0], y[0], x[1], y[1]), fill=GREEN)
 
     exported.save(fp=resource_path("test.png"))
 
     messagebox.showinfo(title="Splatographer Export", message="Map export success!")
+
 
 root = tk.Tk()  ##create window
 root.iconbitmap(resource_path("images\\mappericon.ico"))
@@ -853,6 +969,7 @@ def drawFloors(canvas):
         for point in drawSymmetry:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
 
+
 def drawObjectives(canvas):
     # objective drawing
     if currentLayer == 2:
@@ -933,6 +1050,7 @@ def drawObjectives(canvas):
                                        reflected[1] + 5 * zoom, fill=GREEN,
                                        outline=LIGHT_GREEN, width=2 * zoom)
 
+
 def drawMisc(canvas):
     for sponge in level["sponges"]:
         screen = toScreen(sponge)
@@ -973,6 +1091,7 @@ def drawMisc(canvas):
             canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size, reflected[1] + size,
                                fill=GREEN,
                                outline=LIGHT_GREY, width=8 * zoom)
+
 
 while not dead:
     if hash(str(level)) != previousHash:
