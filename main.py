@@ -613,6 +613,27 @@ def export(*args):
             y.sort()
             draw.rectangle((x[0], y[0], x[1], y[1]), fill=GREEN)
 
+    for rail in level["rails"]:
+        for point in rail:
+            start = rail.index(point) == 0
+            size = 15 if start else 5
+            absolute = (point[0] - bounds[0], point[1] - bounds[1])
+
+            draw.circle(absolute, size, PURPLE)
+            if not start:
+                prev = rail[rail.index(point) - 1]
+                prev = (prev[0] - bounds[0], prev[1] - bounds[1])
+                draw.line([prev, absolute], fill=PURPLE, width=2)
+
+            if symmetry:
+                reflected = symmetrical(point)
+                reflected = (reflected[0] - bounds[0], reflected[1] - bounds[1])
+                draw.circle(reflected, size, fill=GREEN)
+                if not start:
+                    prev = symmetrical(rail[rail.index(point) - 1])
+                    prev = (prev[0] - bounds[0], prev[1] - bounds[1])
+                    draw.line([prev, reflected], fill=GREEN, width=2)
+
     exported.save(fp=resource_path("test.png"))
 
     messagebox.showinfo(title="Splatographer Export", message="Map export success!")
