@@ -1197,6 +1197,7 @@ while not dead:
                                                                                           snappedMouse()),
                        fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
+    canvas.create_text(5, canvas.winfo_height() - 22, text=str(keys), fill=YELLOW, anchor="nw", font=["sans-sarif", 12])
     root.update()
 
     if time.time() - autosave_time > 180 and os.path.exists(path):
