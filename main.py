@@ -12,15 +12,16 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 0.6
+VERSION = 0.6 #  internal version number, not currently used for anything just wanted to keep track.
+#  On release versions this number will be a whole number referring to the amount of updates since release.
 
 print("Splatographer version: " + str(VERSION))
 
-autosave_time = time.time()
+autosave_time = time.time() #  "last autosave" timestamp
 
-path = ""
+path = "" #  level file path
 
-levelTemplate = {
+levelTemplate = { #  base keyset for a level.
     "spawn": [],  # A coordinate pair for where the spawnpoint should be.
     "floors": [],
     "symmetryPoint": [],  # The point at which symmetry occurs, empty if not defined.
@@ -43,8 +44,8 @@ level = levelTemplate.copy()
 ## Coded by Seamus Donahue, feel free to mod/redistribute but I just ask that you leave alone the credit to me :)
 # I know some of this code can be replaced with match for pattern matching but the version of python I used for this didn't have it :\
 
-tempPoints = []
-copiedFloor = {}
+tempPoints = [] #  point to be turned into a floor
+copiedFloor = {} #  floor copied with ctrl+c
 
 grid = 32
 camera = [0, 0]
@@ -938,16 +939,12 @@ def die():
 
 root.wm_protocol("WM_DELETE_WINDOW", die)
 
-if len(sys.argv) >= 3:
-    if sys.argv[1] == "-f":
-        valid = os.path.exists(sys.argv[2])
-
-        if valid:
-            path = sys.argv[2]
-            with open(path, "r") as f:
-                level = json.loads(f.read())
-        else:
-            messagebox.showerror(title="Invalid file", message="The file being opened does not exist!")
+if len(sys.argv) >= 2:
+    if os.path.exists(sys.argv[1]):
+        path = sys.argv[1]
+        with open(path, "r") as f:
+            level = json.loads(f.read())
+        previousHash = hash(str(level))
 
 applySettings()
 
@@ -1132,8 +1129,9 @@ def drawMisc(canvas):
             canvas.create_oval(reflected[0] - size, reflected[1] - size, reflected[0] + size, reflected[1] + size,
                                fill=GREEN,
                                outline=LIGHT_GREY, width=8 * zoom)
-
-
+root.title("Splatographer | loading.")
+root.update()
+time.sleep(0.5) #  so the program doesn't try to draw things while the resize events are happening...
 while not dead:
     if hash(str(level)) != previousHash:
         previousHash = hash(str(level))
