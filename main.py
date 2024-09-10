@@ -415,7 +415,8 @@ class Settings:
         return valid
 
 
-def export(*args):
+def export(showSuccess=True,*args):
+    root.title("Splatographer | {} exporting {}.".format(path, layerKey[currentLayer]))
     allX = []
     allY = []
     for floor in level["floors"]:
@@ -425,7 +426,8 @@ def export(*args):
 
     if len(level["floors"]) == 0:
         print("[Export] Failed! Level has no floors!")
-        return
+        messagebox.showerror("Export", "Level cannot be exported with no floors!")
+        return False
 
     allX.sort()
     allY.sort()
@@ -616,7 +618,7 @@ def export(*args):
     for rail in level["rails"]:
         for point in rail:
             start = rail.index(point) == 0
-            size = 15 if start else 5
+            size = 10 if start else 5
             absolute = (point[0] - bounds[0], point[1] - bounds[1])
 
             draw.circle(absolute, size, PURPLE)
@@ -634,10 +636,26 @@ def export(*args):
                     prev = (prev[0] - bounds[0], prev[1] - bounds[1])
                     draw.line([prev, reflected], fill=GREEN, width=2)
 
-    exported.save(fp=resource_path("test.png"))
+    if len(level["spawn"]) >= 2:
+        absolute = (level["spawn"][0] - bounds[0], level["spawn"][1] - bounds[1])
+        draw.circle(absolute, 40, width=8, fill=PURPLE, outline=LIGHT_GREY)
+        if symmetry:
+            reflected = symmetrical(level["spawn"])
+            reflected = (reflected[0] - bounds[0], reflected[1] - bounds[1])
+            draw.circle(reflected, 40, width=8,fill=GREEN,outline=LIGHT_GREY)
 
-    messagebox.showinfo(title="Splatographer Export", message="Map export success!")
+    exported.save(fp=path.removesuffix(".splat") + "-" + layerKey[currentLayer] + ".png")
 
+    if showSuccess: messagebox.showinfo(title="Export", message="Map exported successfully!")
+    return True
+
+
+def exportAll(*args):
+    global currentLayer
+    for layer in range(len(layerKey)):
+        currentLayer = layer
+        if not export(False): return
+    messagebox.showinfo(title="Export", message="Exported map on all layers!")
 
 root = tk.Tk()  ##create window
 root.iconbitmap(resource_path("images\\mappericon.ico"))
@@ -650,7 +668,8 @@ fileMenu = tk.Menu(topBar, tearoff=0)
 fileMenu.add_command(label="New Map", command=newFile)
 fileMenu.add_command(label="Open Map", command=openFile)
 fileMenu.add_command(label="Save Map", command=save)
-fileMenu.add_command(label="Export Image", command=export)
+fileMenu.add_command(label="Export Current Layer", command=export)
+fileMenu.add_command(label="Export All Layers", command=exportAll)
 fileMenu.add_command(label="preferences", command=settingsWindow)
 
 floorMenu = tk.Menu(topBar, tearoff=0)
@@ -698,6 +717,7 @@ root.bind(sequence="<Control-o>", func=openFile)
 root.bind(sequence="<Control-s>", func=save)
 root.bind(sequence="<Control-n>", func=newFile)
 root.bind(sequence="<Control-e>", func=export)
+root.bind(sequence="<Control-Shift-KeyPress-E>",func=exportAll)
 root.bind(sequence="<Delete>", func=deleteFloor)
 root.bind(sequence="<BackSpace>", func=deleteFloor)
 root.bind(sequence="<]>", func=gridinc)
