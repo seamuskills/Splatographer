@@ -755,7 +755,7 @@ def keyrelease(event):
 
     global tempPoints
     if event.keysym == "Shift_L" and len(tempPoints) > 0:
-        if len(tempPoints) <= 2:
+        if len(tempPoints) <= 2 or Polygon(tempPoints).area == 0:
             tempPoints = []
             return
         level["floors"].append({"points": tempPoints, "type": 0, "height": 100, "layer": currentLayer})
@@ -891,7 +891,7 @@ def placeObjective(event):
                 if Point(fromScreen(mousePos)).within(Polygon(zone)):
                     level["objectives"]["zones"].remove(zone)
 
-        if len(tempPoints) < 3: return
+        if len(tempPoints) < 3 or Polygon(tempPoints).area == 0: return
         level["objectives"][layerKey[currentLayer]].append(tempPoints)
         tempPoints = []
     else:
@@ -1178,6 +1178,10 @@ while not dead:
         canvas.create_rectangle(absolute[0] - tempPointWidth, absolute[1] - tempPointWidth,
                                 absolute[0] + tempPointWidth,
                                 absolute[1] + tempPointWidth, fill=RED)
+
+        if len(tempPoints) >= 2:
+            prev = toScreen(tempPoints[(tempPoints.index(point) - 1) % len(tempPoints)])
+            canvas.create_line(*absolute, *prev, fill=TOMATO)
 
     drawObjectives(canvas)
 
