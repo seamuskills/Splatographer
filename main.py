@@ -12,8 +12,8 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 1 #  internal version number, not currently used for anything just wanted to keep track.
-#  On release versions this number will be a whole number referring to the amount of updates since release.
+VERSION = 1.1 #  internal version number, not currently used for anything just wanted to keep track.
+#  On release versions this number will be a whole number referring to the amount of updates since release. Minor updates will still use decimal places.
 
 print("Splatographer version: " + str(VERSION))
 
@@ -603,6 +603,7 @@ def export(showSuccess=True,*args):
                                    fill=(0, 0, 0, 0), outline=LIGHT_GREEN, width=5)
 
     for sponge in level["sponges"]:
+        if sponge[2] != currentLayer and sponge[2] != 0: continue
         absolute = (sponge[0] - bounds[0], sponge[1] - bounds[1])
         draw.rectangle((absolute[0], absolute[1], absolute[0] + 32, absolute[1] + 32), fill=PURPLE)
         if symmetry:
@@ -618,6 +619,7 @@ def export(showSuccess=True,*args):
             draw.rectangle((x[0], y[0], x[1], y[1]), fill=GREEN)
 
     for rail in level["rails"]:
+        if rail[0][2] != currentLayer and rail[0][2] != 0: continue
         for point in rail:
             start = rail.index(point) == 0
             size = 10 if start else 5
@@ -785,18 +787,22 @@ def mouseDrag(event):
 def placeMiscElement(event):
     global tempPoints
     for sponge in level["sponges"]:
-        if math.dist(sponge, snappedMouse()) < grid / 2:
+        if sponge[2] != currentLayer and sponge[2] != 0: continue
+        if math.dist(sponge[:2], snappedMouse()) < grid / 2:
             level["sponges"].remove(sponge)
             return
     for rail in level["rails"]:
-        if math.dist(rail[0], snappedMouse()) < grid / 2:
+        if rail[0][2] != currentLayer and rail[0][2] != 0: continue
+        if math.dist(rail[0][:2], snappedMouse()) < grid / 2:
             level["rails"].remove(rail)
             return
     if len(tempPoints) >= 2:
         level["rails"].append(tempPoints.copy())
+        level["rails"][-1][0].append(currentLayer)
+        print(level["rails"])
         tempPoints = []
     else:
-        level["sponges"].append(snappedMouse())
+        level["sponges"].append((*snappedMouse(), currentLayer))
 
 
 def mousePress(event):
@@ -1092,6 +1098,7 @@ def drawObjectives(canvas):
 
 def drawMisc(canvas):
     for sponge in level["sponges"]:
+        if sponge[2] != currentLayer and sponge[2] != 0: continue
         screen = toScreen(sponge)
         canvas.create_rectangle(screen[0], screen[1], screen[0] + 32 * zoom, screen[1] + 32 * zoom, fill=PURPLE,
                                 width=0)
@@ -1103,6 +1110,7 @@ def drawMisc(canvas):
                                     width=0)
 
     for rail in level["rails"]:
+        if rail[0][2] != currentLayer and rail[0][2] != 0: continue
         for point in rail:
             screen = toScreen(point)
             screenSymm = toScreen(symmetrical(point))
