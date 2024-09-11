@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 0.6 #  internal version number, not currently used for anything just wanted to keep track.
+VERSION = 1 #  internal version number, not currently used for anything just wanted to keep track.
 #  On release versions this number will be a whole number referring to the amount of updates since release.
 
 print("Splatographer version: " + str(VERSION))
@@ -128,7 +128,8 @@ def gridinc(*args):
 
 def griddec(*args):
     global grid
-    grid //= 2
+    if (grid // 2 > 0):
+        grid //= 2
 
 
 def save(*args):
