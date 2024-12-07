@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 1.1 #  internal version number, not currently used for anything just wanted to keep track.
+VERSION = 1.2 #  internal version number, not currently used for anything just wanted to keep track.
 #  On release versions this number will be a whole number referring to the amount of updates since release. Minor updates will still use decimal places.
 
 print("Splatographer version: " + str(VERSION))
@@ -1123,8 +1123,9 @@ def drawMisc(canvas):
                                 width=0)
         if level["symmetryPoint"] and showSymmetry:
             screen = toScreen(symmetrical(sponge))
-            secondPoint = toScreen(symmetrical(
-                [sponge[0] + 32 * zoom, sponge[1] + 32 * zoom]))  # Will not be properly symmetrical unless I do this.
+            secondPoint = toScreen(symmetrical(sponge))
+            dif = symmetrical([32 * zoom, 32 * zoom])
+            secondPoint = [secondPoint[0] + dif[0], secondPoint[1] + dif[1]]
             canvas.create_rectangle(screen[0], screen[1], secondPoint[0], secondPoint[1], fill=GREEN,
                                     width=0)
 
