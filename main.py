@@ -179,6 +179,26 @@ def openFile(*args):  # *args so the hotkey can be used lol
                 validateLevel()
             camera = [-grid, -grid]
             askSave = False
+            level["floors"] = list(map(lambda floor : {"points": [], "type": 0, "height": 100, "layer": 0} | floor, level["floors"]))
+            for floor in level["floors"]:
+                if len(floor["points"]) < 3:
+                    print(f"[WARNING] Removed {floor}! No points! Corrupted file?")
+                    level["floors"].remove(floor)
+
+            for rail in level["rails"]:
+                for index, point in enumerate(rail):
+                    while len(point) < 2:
+                        point.append(0)
+                        print(f"[WARNING] Fixed point in rail {rail}! Outdated file?")
+
+                    if (index == 0 and len(point) < 3):
+                        point.append(0)
+
+            for sponge in level["sponges"]:
+                while len(sponge) < 3:
+                    sponge.append(0)
+                    print(f"[WARNING] Fixed sponge data in sponge {sponge}! Outdated file?")
+
             previousHash = hash(str(level))
             # add some loading code now...
         else:
@@ -335,7 +355,6 @@ def paste(*args):
     pastedPoly = Polygon(pasted["points"])
     pastedPoly = translate(pastedPoly, snappedMouse()[0], snappedMouse()[1])
     pasted["points"] = toPoints(pastedPoly)
-
     level["floors"].append(pasted)
 
 
