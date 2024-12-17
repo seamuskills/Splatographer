@@ -681,6 +681,8 @@ def exportAll(*args):
     messagebox.showinfo(title="Export", message="Exported map on all layers!")
 
 root = tk.Tk()  ##create window
+root.columnconfigure(0, weight=1)
+root.rowconfigure(0, weight=1)
 root.iconbitmap(resource_path("images\\mappericon.ico"))
 root.geometry("1600x900")
 
@@ -733,8 +735,14 @@ topBar.add_command(label="Snap to grid", command=toggleSnap)
 topBar.add_command(label="reset camera", command=resetCamera)
 topBar.add_command(label="About", command=about)
 
-canvas = tk.Canvas(root, width=1600, height=900, background=DARK_BLUE)
-canvas.pack()
+frame = tk.Frame(root)
+frame.grid(row=0, column=0, sticky="NSEW")
+frame.columnconfigure(0, weight=1)
+frame.rowconfigure(0, weight=1)
+frame.rowconfigure(1, weight=9)
+
+canvas = tk.Canvas(frame, width=1600, height=900, background=DARK_BLUE)
+canvas.grid(row=1, column=0, sticky="NSEW")
 
 root.bind(sequence="<Control-o>", func=openFile)
 root.bind(sequence="<Control-s>", func=save)
@@ -860,8 +868,8 @@ def rclickPress(event):
         tempPoints.append(point)
 
 
-def configEvent(event):
-    canvas.config(width=event.width, height=event.height)
+# def configEvent(event):
+#     canvas.config(width=event.width, height=event.height)
 
 
 def snappedMouse():
@@ -938,7 +946,7 @@ def placeObjective(event):
 
 root.bind("<KeyPress>", keypress)
 root.bind("<KeyRelease>", keyrelease)
-root.bind("<Configure>", configEvent)
+# root.bind("<Configure>", configEvent)
 
 canvas.bind("<B1-Motion>", mouseDrag)
 canvas.bind("<Motion>", updateMousePos)
