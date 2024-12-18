@@ -5,6 +5,7 @@ import re
 import sys
 import time
 import tkinter as tk
+from idlelib.tooltip import Hovertip
 from tkinter import filedialog, messagebox
 from tkinter import simpledialog
 from PIL import Image, ImageDraw
@@ -12,7 +13,7 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 1.3 #  internal version number, not currently used for anything just wanted to keep track.
+VERSION = 1.4 #  internal version number, not currently used for anything just wanted to keep track.
 #  On release versions this number will be a whole number referring to the amount of updates since release. Minor updates will still use decimal places.
 
 print("Splatographer version: " + str(VERSION))
@@ -72,6 +73,15 @@ compile with pyInstaller:
 pyinstaller --noconfirm --onefile --windowed --add-data "./images;images/" --icon "images/mappericon.ico"  "./main.py"
 """
 
+# place modes: (in order)
+# 0 floor
+# 1 spawnpoint
+# 2 misc (sponge/rails)
+# 3 objective primary
+# 4 objective secondary
+placing = False
+placemode = 0
+placeStrings = ["floor", "spawn point", "sponges/rails", "primary objective", "secondary objective"]
 
 def validateLevel():  # this will make sure that the level file is fully valid
     global level
@@ -735,13 +745,113 @@ topBar.add_command(label="Snap to grid", command=toggleSnap)
 topBar.add_command(label="reset camera", command=resetCamera)
 topBar.add_command(label="About", command=about)
 
-frame = tk.Frame(root)
-frame.grid(row=0, column=0, sticky="NSEW")
-frame.columnconfigure(0, weight=1)
-frame.rowconfigure(0, weight=1)
-frame.rowconfigure(1, weight=9)
+def placeFloors():
+    global tempPoints
+    if len(tempPoints) > 0:
+        if len(tempPoints) <= 2 or Polygon(tempPoints).area == 0:
+            tempPoints = []
+            return
+        level["floors"].append({"points": tempPoints, "type": 0, "height": 100, "layer": currentLayer})
+        tempPoints = []
 
-canvas = tk.Canvas(frame, width=1600, height=900, background=DARK_BLUE)
+def confirmMode():
+    global placemode
+    global placing
+    placemode = 0
+    placing = False
+
+    placeFloors()
+
+def floorMode():
+    global placemode
+    global placing
+    placemode = 0
+    placing = True
+
+def spawnMode():
+    global placemode
+    global placing
+    placemode = 1
+    placing = True
+
+def miscMode():
+    global placemode
+    global placing
+    placemode = 2
+    placing = True
+
+def objectivePrimaryMode():
+    global placemode
+    global placing
+    placemode = 3
+    placing = True
+
+def objectiveSecondaryMode():
+    global placemode
+    global placing
+    placemode = 4
+    placing = True
+
+imageSubsample = 3
+
+mainframe = tk.Frame(root)
+mainframe.grid(row=0, column=0, sticky="NSEW")
+mainframe.columnconfigure(0, weight=1)
+mainframe.rowconfigure(0, weight=1)
+mainframe.rowconfigure(1, weight=9)
+
+buttonFrame = tk.Frame(mainframe, background=DARK_BLUE)
+buttonFrame.grid(row=0, column=0, sticky="NSEW")
+
+# def updateplacemode():
+#     global placemode
+#     if "Shift_L" in keys:
+#         if 'Alt_L' in keys:
+#             placemode = 2
+#         else:
+#             placemode = 4 if "Control_L" in keys else 3
+#     elif "Control_L" in keys:
+#         placemode = 1
+#     else:
+#         placemode = 0
+
+confirmImage = tk.PhotoImage(file=resource_path("images\\buttonIcons\\done icon.png"))
+confirmImage = confirmImage.subsample(imageSubsample, imageSubsample)
+confirmButton = tk.Button(buttonFrame, image=confirmImage, background=LIGHT_BLUE, activebackground=YELLOW, command=confirmMode)
+confirmButton.pack(side="left", anchor="w")
+Hovertip(confirmButton, "Leave place mode/confirm floor placement\nHotkey: release Lshift", hover_delay=100)
+
+floorImage = tk.PhotoImage(file=resource_path("images\\buttonIcons\\floor placemode.png"))
+floorImage = floorImage.subsample(imageSubsample, imageSubsample)
+floorButton = tk.Button(buttonFrame, image=floorImage, background=LIGHT_BLUE, activebackground=YELLOW, command=floorMode)
+floorButton.pack(side="left")
+Hovertip(floorButton, "floor placement mode (right click to create points)\nHotkey: hold LShift", hover_delay=100)
+
+spawnImage = tk.PhotoImage(file=resource_path("images\\buttonIcons\\spawnpoint.png"))
+spawnImage = spawnImage.subsample(imageSubsample, imageSubsample)
+spawnButton = tk.Button(buttonFrame, image=spawnImage, background=LIGHT_BLUE, activebackground=YELLOW, command=spawnMode)
+spawnButton.pack(side="left")
+Hovertip(spawnButton, "Spawn point placement mode\nHotkey: LCtrl + left click", hover_delay=100)
+
+miscImage = tk.PhotoImage(file=resource_path("images\\buttonIcons\\misc icon.png"))
+miscImage = miscImage.subsample(imageSubsample, imageSubsample)
+miscButton = tk.Button(buttonFrame, image=miscImage, background=LIGHT_BLUE, activebackground=YELLOW, command=miscMode)
+miscButton.pack(side="left")
+Hovertip(miscButton, "Sponge/rail placement mode. (right click to create points, then left click to make a rail)\nHotkey: LShift + LAlt + left click", hover_delay=100)
+
+objectivePrimaryImage = tk.PhotoImage(file=resource_path("images\\buttonIcons\\objective primary.png"))
+objectivePrimaryImage = objectivePrimaryImage.subsample(imageSubsample, imageSubsample)
+objectivePrimaryButton = tk.Button(buttonFrame, image=objectivePrimaryImage, background=LIGHT_BLUE, activebackground=YELLOW, command=objectivePrimaryMode)
+objectivePrimaryButton.pack(side="left")
+Hovertip(objectivePrimaryButton, "Primary objective object placement mode (placed objective depends on current layer, right click for points for zones then left click to confirm zone)\nHotkey: LShift + left click", hover_delay=100)
+
+objectiveSecondaryImage = tk.PhotoImage(file=resource_path("images\\buttonIcons\\objective secondary.png"))
+objectiveSecondaryImage = objectiveSecondaryImage.subsample(imageSubsample, imageSubsample)
+objectiveSecondaryButton = tk.Button(buttonFrame, image=objectiveSecondaryImage, background=LIGHT_BLUE, activebackground=YELLOW, command=objectiveSecondaryMode)
+objectiveSecondaryButton.pack(side="left")
+Hovertip(objectiveSecondaryButton, "Secondary objective object placement mode (placed objective depends on current layer, not applicable for zones)\nHotkey: LShift + LCtrl + left click", hover_delay=100)
+
+canvas = tk.Canvas(mainframe, width=1600, height=900, background=DARK_BLUE)
 canvas.grid(row=1, column=0, sticky="NSEW")
 
 root.bind(sequence="<Control-o>", func=openFile)
@@ -767,10 +877,27 @@ root.config(menu=topBar)
 
 keys = []
 
+def updateplacemode():
+    global placemode
+    if "Shift_L" in keys:
+        if 'Alt_L' in keys:
+            placemode = 2
+        else:
+            placemode = 4 if "Control_L" in keys else 3
+    elif "Control_L" in keys:
+        placemode = 1
+    else:
+        placemode = 0
+
 
 def keypress(event):
+    global placing
     if not event.keysym in keys:
         keys.append(event.keysym)
+
+    placing = "Shift_L" in keys
+
+    updateplacemode()
 
     # I really want to make this a match statement but I don't really know how I can
     if "Up" in keys and selectedIndex != -1:
@@ -780,16 +907,16 @@ def keypress(event):
 
 
 def keyrelease(event):
+    global placing
     if event.keysym in keys:
         keys.remove(event.keysym)
 
     global tempPoints
-    if event.keysym == "Shift_L" and len(tempPoints) > 0:
-        if len(tempPoints) <= 2 or Polygon(tempPoints).area == 0:
-            tempPoints = []
-            return
-        level["floors"].append({"points": tempPoints, "type": 0, "height": 100, "layer": currentLayer})
-        tempPoints = []
+    if event.keysym == "Shift_L":
+        placeFloors()
+        placing = False
+
+    updateplacemode()
 
 
 dragPrevious = [0, 0]
@@ -838,14 +965,7 @@ def mousePress(event):
     global tempPoints
     dragPrevious = [event.x, event.y]
 
-    if "Shift_L" in keys:
-        if 'Alt_L' in keys:
-            placeMiscElement(event)
-        else:
-            placeObjective(event)
-    elif "Control_L" in keys:
-        level["spawn"] = snappedMouse()
-    else:
+    if placemode == 0:
         selected = False
         for floor in level["floors"]:
             if Point(fromScreen(mousePos)).within(Polygon(floor["points"])):
@@ -853,10 +973,32 @@ def mousePress(event):
                 selected = True
 
         if not selected: selectedIndex = -1
+    elif placemode == 1:
+        level["spawn"] = snappedMouse()
+    elif placemode == 2:
+        placeMiscElement(event)
+    elif placemode == 3 or placemode == 4:
+        placeObjective(event)
+
+    # if "Shift_L" in keys:
+    #     if 'Alt_L' in keys:
+    #         placeMiscElement(event)
+    #     else:
+    #         placeObjective(event)
+    # elif "Control_L" in keys:
+    #     level["spawn"] = snappedMouse()
+    # else:
+    #     selected = False
+    #     for floor in level["floors"]:
+    #         if Point(fromScreen(mousePos)).within(Polygon(floor["points"])):
+    #             selectedIndex = level["floors"].index(floor)
+    #             selected = True
+    #
+    #     if not selected: selectedIndex = -1
 
 
 def rclickPress(event):
-    if "Shift_L" in keys:
+    if placing:
         point = snappedMouse()
 
         for tempPoint in tempPoints:
@@ -935,7 +1077,7 @@ def placeObjective(event):
                 level["objectives"][layerKey[currentLayer]].remove(objective)
                 return
         level["objectives"][layerKey[currentLayer]].append(snappedMouse())
-        if (currentLayer >= 3) and "Control_L" in keys:
+        if (currentLayer >= 3) and placemode == 4:
             if currentLayer == 4:
                 for point in level["objectives"]["rain"]:  # make sure only one rainmaker exists
                     if len(point) > 2:
@@ -1224,16 +1366,17 @@ while not dead:
 
     drawMisc(canvas)
 
-    if "Shift_L" in keys:
-        mpoint = snappedMouse()
+    if placing:
+        mpoint = mousePos
         if snapping:
-            mpoint = toScreen(mpoint)
+            mpoint = toScreen(snappedMouse())
         canvas.create_rectangle(mpoint[0] - 2, mpoint[1] - 2, mpoint[0] + 2, mpoint[1] + 2, fill=YELLOW)
 
-    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}% Mouse: {}".format(grid, snapping,
+    canvas.create_text(5, 5, text="Grid: {} Snap: {} Layer: {} Zoom {}% Mouse: {} placemode: {}".format(grid, snapping,
                                                                                           layerKey[currentLayer],
                                                                                           round(zoom * 100),
-                                                                                          snappedMouse()),
+                                                                                          snappedMouse(),
+                                                                                          placeStrings[placemode]),
                        fill=YELLOW, anchor="nw",
                        font=['sans-sarif', 12])
     canvas.create_text(5, canvas.winfo_height() - 22, text=str(keys), fill=YELLOW, anchor="nw", font=["sans-sarif", 12])
