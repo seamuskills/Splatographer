@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 1.4 #  internal version number, not currently used for anything just wanted to keep track.
+VERSION = 1.5 #  internal version number, not currently used for anything just wanted to keep track.
 #  On release versions this number will be a whole number referring to the amount of updates since release. Minor updates will still use decimal places.
 
 print("Splatographer version: " + str(VERSION))
@@ -923,6 +923,7 @@ dragPrevious = [0, 0]
 
 mousePos = [0, 0]
 selectedIndex = -1
+selectedPoint = -1
 deleteDistance = 5
 
 
@@ -933,6 +934,7 @@ def updateMousePos(event):
 
 def mouseDrag(event):
     global dragPrevious
+    updateMousePos(event)
     camera[0] -= dragPrevious[0] - event.x
     camera[1] -= dragPrevious[1] - event.y
     dragPrevious = [event.x, event.y]
@@ -998,6 +1000,7 @@ def mousePress(event):
 
 
 def rclickPress(event):
+    global selectedPoint
     if placing:
         point = snappedMouse()
 
@@ -1008,6 +1011,48 @@ def rclickPress(event):
                 return
 
         tempPoints.append(point)
+    elif selectedIndex >= 0:
+        points = level["floors"][selectedIndex]["points"]
+        lowestDist = 100000000000000
+        for index, point in enumerate(points):
+            dist = math.dist(point, snappedMouse())
+            if dist <= lowestDist and dist <= grid // 4:
+                lowestDist = dist
+                selectedPoint = index
+
+        if selectedPoint == -1:  # the only way this could happen is if there was no selection found close enough.
+            closestLine = [-1, -1, 1000000000000]
+            mouse = snappedMouse()
+            for index, point1 in enumerate(points):
+                point2 = points[index - 1] # this should be fine because -1 (the lowest value) should give the last in the list?
+
+                ls = math.dist(point1, point2) ** 2
+
+                if (ls == 0):
+                    dist = math.dist(mouse, point1)
+                else:
+                    t = ((mouse[0] - point1[0]) * (point2[0] - point1[0]) + (mouse[1] - point1[1]) * (point2[1] - point1[1])) / ls
+                    t = max(0, min(1, t))
+
+                    dist = math.dist(mouse,[point1[0] + t * (point2[0] - point1[0]),
+                                            point1[1] + t * (point2[1] - point1[1])])
+
+                    # a = (point2[1] - point1[1])
+                    # b = (point2[0] - point1[0])
+                    # c = point2[0] * point1[1] - point2[1] * point1[0]
+                    # dist = (abs(a * mouse[0] - b * mouse[1] + c) / math.dist(point1, point2))
+
+                if dist <= closestLine[2]:
+                    # print(dist, closestLine[2])
+                    closestLine = ((index-1) % len(points), index, dist)
+
+            # print(closestLine)
+
+            endIndex = (closestLine[0] + 1) % len(points)
+            # print(endIndex)
+            level["floors"][selectedIndex]["points"].insert(endIndex, snappedMouse())
+            selectedPoint = endIndex
+
 
 
 # def configEvent(event):
@@ -1086,11 +1131,39 @@ def placeObjective(event):
             level["objectives"][layerKey[currentLayer]][-1].append(True)
 
 
+def mouseDrag2(event):
+    updateMousePos(event)
+    if selectedIndex >= 0 and selectedPoint >= 0:
+        try:
+            level["floors"][selectedIndex]["points"][selectedPoint] = snappedMouse()
+        except IndexError:
+            print("[WARNING] Invalid point selection index when moving point!")
+
+
+def mouseRelease(event):
+    if event.num == 3: # right click
+        global selectedPoint
+        selectedPoint = -1
+
+def mouseDoubleClick(event):
+    global selectedPoint
+    global selectedIndex
+    rclickPress(event)
+    if selectedPoint >= 0:
+        level["floors"][selectedIndex]["points"].remove(level["floors"][selectedIndex]["points"][selectedPoint])
+        if len(level["floors"][selectedIndex]["points"]) <= 2:
+            level["floors"].remove(level["floors"][selectedIndex])
+            selectedIndex = -1
+        selectedPoint = -1
+
 root.bind("<KeyPress>", keypress)
 root.bind("<KeyRelease>", keyrelease)
 # root.bind("<Configure>", configEvent)
 
 canvas.bind("<B1-Motion>", mouseDrag)
+canvas.bind("<B3-Motion>", mouseDrag2)
+canvas.bind("<ButtonRelease>", mouseRelease)
+canvas.bind("<Double-Button-3>", mouseDoubleClick)
 canvas.bind("<Motion>", updateMousePos)
 canvas.bind("<Button-1>", mousePress)
 canvas.bind("<Button-2>", setSymmetry)
@@ -1179,6 +1252,8 @@ def drawFloors(canvas):
                                       stipple="@" + resource_path("images\\grate.xbm"))
         for point in drawPoly:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
+            if level["floors"].index(floor) == selectedIndex and drawPoly.index(point) == selectedPoint and selectedPoint >= 0:
+                canvas.create_rectangle(point[0] - 3, point[1] - 3, point[0] + 3, point[1] + 3, fill=TOMATO)
 
         for point in drawSymmetry:
             canvas.create_rectangle(point[0] - 1, point[1] - 1, point[0] + 1, point[1] + 1, fill="black")
