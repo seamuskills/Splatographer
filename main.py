@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point, mapping
 
-VERSION = 1.5 #  internal version number, not currently used for anything just wanted to keep track.
+VERSION = 1.6 #  internal version number, not currently used for anything just wanted to keep track.
 #  On release versions this number will be a whole number referring to the amount of updates since release. Minor updates will still use decimal places.
 
 print("Splatographer version: " + str(VERSION))
@@ -53,6 +53,7 @@ camera = [0, 0]
 zoom = 1
 drawGrid = True
 snapping = True
+autosave_interval = 300
 heightIncrement = 10
 currentLayer = 0
 layerKey = ["all", "turf", "zones", "tower", "rain", "clams"]  # which layer is what
@@ -62,11 +63,10 @@ previousHash = hash(str(level))
 preferences = {
     "grid": 32,
     "height_increment": 10,
-    "snap": True
+    "snap": True,
+    "autosave_interval_seconds": 300
 }
 showSymmetry = True
-
-settingsPath = os.getcwd() + "\\settings.json"
 
 """
 compile with pyInstaller:
@@ -238,21 +238,11 @@ def askHeightIncrement():
     newIncrement = simpledialog.askinteger("New height increment",
                                            "How many units should the raise and lower command modify a floors height by?")
 
-
-def makeInkable(*args):
+def updateFloorTypeKeybind(event):
+    newType = {"i":0, "u": 1, "g": 2}[event.char]
     if selectedIndex in range(len(level["floors"])):
-        level["floors"][selectedIndex]["type"] = 0
-
-
-def makeUninkable(*args):
-    if selectedIndex in range(len(level["floors"])):
-        level["floors"][selectedIndex]["type"] = 1
-
-
-def makeGrate(*args):
-    if selectedIndex in range(len(level["floors"])):
-        level["floors"][selectedIndex]["type"] = 2
-
+        level["floors"][selectedIndex]["type"] = newType
+        floortype.set(str(newType))
 
 def deleteFloor(*args):
     global selectedIndex
@@ -264,6 +254,7 @@ def deleteFloor(*args):
 def changeLayer(event):
     global currentLayer
     currentLayer = int(event.keysym)
+    layerVar.set(event.keysym)
 
 
 def xflip():
@@ -277,43 +268,16 @@ def yflip():
 def rotatenotflip():
     level["rotated"] = "rotated"
 
-
-# these have to be here to put them in the menu... I hate it
-def layer0():
-    global currentLayer
-    currentLayer = 0
-
-
-def layer1():
-    global currentLayer
-    currentLayer = 1
-
-
-def layer2():
-    global currentLayer
-    currentLayer = 2
-
-
-def layer3():
-    global currentLayer
-    currentLayer = 3
-
-
-def layer4():
-    global currentLayer
-    currentLayer = 4
-
-
-def layer5():
-    global currentLayer
-    currentLayer = 5
-
+settingsPath = os.path.expanduser("~\\Splatographer\\settings.json")
 
 def applySettings():
     global grid
     global heightIncrement
     global snapping
     global preferences
+    global autosave_interval
+    if not os.path.exists(os.path.expanduser("~\\Splatographer")):
+        os.mkdir(os.path.expanduser("~\\Splatographer"))
     if not os.path.exists(settingsPath):
         with open(settingsPath, "w") as f:
             f.write(json.dumps(preferences))
@@ -323,6 +287,7 @@ def applySettings():
     grid = int(preferences["grid"])
     heightIncrement = preferences["height_increment"]
     snapping = preferences["snap"]
+    autosave_interval = preferences["autosave_interval_seconds"]
 
 
 def settingsWindow():
@@ -690,6 +655,16 @@ def exportAll(*args):
         if not export(False): return
     messagebox.showinfo(title="Export", message="Exported map on all layers!")
 
+def updateFloorType():
+    if selectedIndex >= 0:
+        print("test")
+        level["floors"][selectedIndex]["type"] = int(floortype.get())
+
+def updateLayer():
+    global currentLayer
+    currentLayer = int(layerVar.get())
+    print(int(layerVar.get()), currentLayer)
+
 root = tk.Tk()  ##create window
 root.columnconfigure(0, weight=1)
 root.rowconfigure(0, weight=1)
@@ -698,7 +673,7 @@ root.geometry("1600x900")
 
 root.config(background="#222222")
 
-topBar = tk.Menu(root, fg="white")
+topBar = tk.Menu(root)
 fileMenu = tk.Menu(topBar, tearoff=0)
 fileMenu.add_command(label="New Map", command=newFile)
 fileMenu.add_command(label="Open Map", command=openFile)
@@ -711,20 +686,26 @@ floorMenu = tk.Menu(topBar, tearoff=0)
 floorMenu.add_command(label="raise (↑)", command=floorUp)
 floorMenu.add_command(label="lower (↓)", command=floorDown)
 floorMenu.add_command(label="change height increment", command=askHeightIncrement)
-floorMenu.add_command(label="make inkable (i)", command=makeInkable)
-floorMenu.add_command(label="make uninkable (u)", command=makeUninkable)
-floorMenu.add_command(label="make grate (g)", command=makeGrate)
+floortype = tk.StringVar()
+floortype.set("0")
+typeMenu = tk.Menu(floorMenu, tearoff=False)
+typeMenu.add_radiobutton(label="inkable (i)", value="0", variable=floortype, command=updateFloorType)
+typeMenu.add_radiobutton(label="uninkable (u)", value="1", variable=floortype, command=updateFloorType)
+typeMenu.add_radiobutton(label="grate (g)", value="2", variable=floortype, command=updateFloorType)
+floorMenu.add_cascade(menu=typeMenu, label="floor type")
 floorMenu.add_separator()
 floorMenu.add_command(label="delete floor (delete or backspace)", command=deleteFloor)
 
 layerMenu = tk.Menu(topBar, tearoff=0)
-layerMenu.add_command(label="all (0)", command=layer0)
+layerVar = tk.StringVar()
+layerVar.set("0")
+layerMenu.add_radiobutton(label="all (0)", value="0", command=updateLayer, variable=layerVar)
 layerMenu.add_separator()
-layerMenu.add_command(label="turf (1)", command=layer1)
-layerMenu.add_command(label="zones (2)", command=layer2)
-layerMenu.add_command(label="tower (3)", command=layer3)
-layerMenu.add_command(label="rain (4)", command=layer4)
-layerMenu.add_command(label="clams (5)", command=layer5)
+layerMenu.add_radiobutton(label="turf (1)", value="1", command=updateLayer, variable=layerVar)
+layerMenu.add_radiobutton(label="zones (2)", value="2", command=updateLayer, variable=layerVar)
+layerMenu.add_radiobutton(label="tower (3)", value="3", command=updateLayer, variable=layerVar)
+layerMenu.add_radiobutton(label="rain (4)", value="4", command=updateLayer, variable=layerVar)
+layerMenu.add_radiobutton(label="clams (5)", value="5", command=updateLayer, variable=layerVar)
 
 symmetryMenu = tk.Menu(topBar, tearoff=0)
 symmetryMenu.add_command(label="show symmetry", command=toggleShowSymmetry)
@@ -797,10 +778,8 @@ imageSubsample = 3
 mainframe = tk.Frame(root)
 mainframe.grid(row=0, column=0, sticky="NSEW")
 mainframe.columnconfigure(0, weight=1)
-mainframe.rowconfigure(0, weight=1)
-mainframe.rowconfigure(1, weight=9)
 
-buttonFrame = tk.Frame(mainframe, background=DARK_BLUE)
+buttonFrame = tk.Frame(mainframe, background=DARK_BLUE, highlightthickness=1, highlightbackground=LIGHT_BLUE)
 buttonFrame.grid(row=0, column=0, sticky="NSEW")
 
 # def updateplacemode():
@@ -851,7 +830,7 @@ objectiveSecondaryButton = tk.Button(buttonFrame, image=objectiveSecondaryImage,
 objectiveSecondaryButton.pack(side="left")
 Hovertip(objectiveSecondaryButton, "Secondary objective object placement mode (placed objective depends on current layer, not applicable for zones)\nHotkey: LShift + LCtrl + left click", hover_delay=100)
 
-canvas = tk.Canvas(mainframe, width=1600, height=900, background=DARK_BLUE)
+canvas = tk.Canvas(mainframe, width=1600, height=900, background=DARK_BLUE, highlightthickness=0)
 canvas.grid(row=1, column=0, sticky="NSEW")
 
 root.bind(sequence="<Control-o>", func=openFile)
@@ -863,9 +842,9 @@ root.bind(sequence="<Delete>", func=deleteFloor)
 root.bind(sequence="<BackSpace>", func=deleteFloor)
 root.bind(sequence="<]>", func=gridinc)
 root.bind(sequence="<[>", func=griddec)
-root.bind(sequence="<i>", func=makeInkable)
-root.bind(sequence="<u>", func=makeUninkable)
-root.bind(sequence="<g>", func=makeGrate)
+root.bind(sequence="<i>", func=updateFloorTypeKeybind)
+root.bind(sequence="<u>", func=updateFloorTypeKeybind)
+root.bind(sequence="<g>", func=updateFloorTypeKeybind)
 root.bind(sequence="<Control-c>", func=copy)
 root.bind(sequence="<Control-v>", func=paste)
 root.bind(sequence="<Control-r>", func=setSymmetry)
@@ -955,7 +934,6 @@ def placeMiscElement(event):
     if len(tempPoints) >= 2:
         level["rails"].append(tempPoints.copy())
         level["rails"][-1][0].append(currentLayer)
-        print(level["rails"])
         tempPoints = []
     else:
         level["sponges"].append((*snappedMouse(), currentLayer))
@@ -972,6 +950,7 @@ def mousePress(event):
         for floor in level["floors"]:
             if Point(fromScreen(mousePos)).within(Polygon(floor["points"])):
                 selectedIndex = level["floors"].index(floor)
+                floortype.set(str(floor["type"]))
                 selected = True
 
         if not selected: selectedIndex = -1
@@ -1348,9 +1327,8 @@ def drawMisc(canvas):
                                 width=0)
         if level["symmetryPoint"] and showSymmetry:
             screen = toScreen(symmetrical(sponge))
-            secondPoint = toScreen(symmetrical(sponge))
-            dif = symmetrical([32 * zoom, 32 * zoom])
-            secondPoint = [secondPoint[0] + dif[0], secondPoint[1] + dif[1]]
+            secondPoint = toScreen(symmetrical([sponge[0] + 32, sponge[1] + 32]))
+            secondPoint = [secondPoint[0], secondPoint[1]]
             canvas.create_rectangle(screen[0], screen[1], secondPoint[0], secondPoint[1], fill=GREEN,
                                     width=0)
 
@@ -1457,7 +1435,7 @@ while not dead:
     canvas.create_text(5, canvas.winfo_height() - 22, text=str(keys), fill=YELLOW, anchor="nw", font=["sans-sarif", 12])
     root.update()
 
-    if time.time() - autosave_time > 180 and os.path.exists(path):
+    if time.time() - autosave_time > autosave_interval and os.path.exists(path) and autosave_interval > 0:
         autosave_time = time.time()
         save()
         print("Autosaved to file.")
